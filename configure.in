@@ -1,0 +1,116 @@
+dnl $Id: configure.in 102 2009-06-23 15:50:57Z naoaki $
+dnl
+dnl
+dnl Exported and configured variables:
+dnl CXXFLAGS
+dnl LDFLAGS
+dnl INCLUDES
+
+
+dnl ------------------------------------------------------------------
+dnl Initialization for autoconf
+dnl ------------------------------------------------------------------
+AC_PREREQ(2.59)
+AC_INIT
+AC_CONFIG_SRCDIR([frontend/main.cpp])
+
+
+dnl ------------------------------------------------------------------
+dnl Checks for system
+dnl ------------------------------------------------------------------
+AC_CANONICAL_HOST
+AC_AIX
+AC_GNU_SOURCE
+AC_ISC_POSIX
+AC_MINIX
+
+
+dnl ------------------------------------------------------------------
+dnl Initialization for automake
+dnl ------------------------------------------------------------------
+AM_INIT_AUTOMAKE(dastring, 0.1)
+AC_CONFIG_HEADERS(config.h)
+AM_MAINTAINER_MODE
+
+
+dnl ------------------------------------------------------------------
+dnl Checks for program
+dnl ------------------------------------------------------------------
+AC_PROG_CXX
+AC_PROG_INSTALL
+AC_PROG_LN_S
+
+
+dnl ------------------------------------------------------------------
+dnl Initialization for variables
+dnl ------------------------------------------------------------------
+CXXFLAGS="${ac_save_CXXFLAGS}"
+LDFLAGS="${ac_save_LDFLAGS}"
+INCLUDES="${ac_save_INCLUDES}"
+
+dnl ------------------------------------------------------------------
+dnl Checks for header files.
+dnl ------------------------------------------------------------------
+AC_HEADER_STDC
+AC_CHECK_HEADERS(stdint.h)
+AC_CHECK_HEADERS(sys/mman.h)
+
+
+dnl ------------------------------------------------------------------
+dnl Checks for typedefs, structures, and compiler characteristics.
+dnl ------------------------------------------------------------------
+AC_C_CONST
+AC_CHECK_SIZEOF
+AC_TYPE_SIZE_T
+AC_STRUCT_TM
+AC_CHECK_TYPES([uint32_t])
+
+dnl ------------------------------------------------------------------
+dnl Checks for debugging mode
+dnl ------------------------------------------------------------------
+AC_ARG_ENABLE(
+  debug,
+  [AS_HELP_STRING([--enable-debug],[Turn on debugging])]
+)
+
+if test "x$enable_debug" = "xyes"; then
+   CXXFLAGS="-DDEBUG -O -g ${CXXFLAGS}"
+else
+   CXXFLAGS="-O3 -ffast-math ${CXXFLAGS}"
+fi
+
+dnl ------------------------------------------------------------------
+dnl Checks for profiling mode
+dnl ------------------------------------------------------------------
+AC_ARG_ENABLE(
+  profile,
+  [AS_HELP_STRING([--enable-profile],[Turn on profiling])]
+)
+
+if test "x$enable_profile" = "xyes"; then
+   CXXFLAGS="-DPROFILE -pg ${CXXFLAGS}"
+fi
+
+
+dnl ------------------------------------------------------------------
+dnl Checks for library functions.
+dnl ------------------------------------------------------------------
+
+dnl Check for math library
+AC_CHECK_LIB(m, sqrt)
+AC_CHECK_LIB(mmap, mmap)
+
+INCLUDES="-I\$(top_srcdir) -I\$(top_srcdir)/include"
+
+dnl ------------------------------------------------------------------
+dnl Export variables
+dnl ------------------------------------------------------------------
+AC_SUBST(CXXFLAGS)
+AC_SUBST(LDFLAGS)
+AC_SUBST(INCLUDES)
+
+dnl ------------------------------------------------------------------
+dnl Output the configure results.
+dnl ------------------------------------------------------------------
+AC_CONFIG_FILES(Makefile include/Makefile frontend/Makefile)
+AC_OUTPUT

@@ -1,5 +1,149 @@
 #ifndef __MEMORY_MAPPED_FILE_POSIX_H__
 #define __MEMORY_MAPPED_FILE_POSIX_H__
 
+#include <fcntl.h>
+#include <memory.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
+class memory_mapped_file_posix :
+    public memory_mapped_file_base
+{
+public:
+    typedef size_t size_type;
+
+protected:
+	int                     m_fd;
+    std::ios_base::openmode m_mode;
+	void*                   m_data;
+	size_type               m_size;
+
+public:
+    memory_mapped_file_posix()
+    {
+        m_fd = -1;
+        m_mode = 0;
+        m_data = NULL;
+        m_size = 0;
+    }
+
+    virtual ~memory_mapped_file_posix()
+    {
+        close();
+    }
+
+    void open(const std::string& path, std::ios_base::openmode mode)
+    {
+        int flags = 0;
+        struct stat buf;
+
+        if (mode & std::ios_base::in) {
+			flags = O_RDONLY;
+		}
+        if (mode & std::ios_base::out) {
+			flags = O_RDWR | O_CREAT;
+		}
+		if (mode & std::ios_base::trunc) {
+			flags |= (O_RDWR | O_TRUNC);
+		}
+
+        m_fd = open(path.c_str(), flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        if (m_fd != -1) {
+            if (fstat(mmfm->fd, &buf) == 0) {
+                m_mode = mode;
+                this->resize(buf.st_size);
+            } else {
+                close(m_fd);
+            }
+        }
+	}
+
+    bool is_open() const
+    {
+        return (m_fd != -1);
+    }
+
+    void close()
+    {
+        this->free();
+        if (m_fd != -1) {
+            close(m_fd);
+            m_fd = -1;
+        }
+	}
+
+    bool resize(size_type size)
+    {
+        if (size == 0) {
+            this->free();
+            return true;
+        }
+
+        if (mmfm->fd == -1) {
+            return false;
+        }
+
+        this->free();
+
+        if ((m_mode & std::ios_base::out && m_size < size) {
+            /* Try to expand the file to the specified size. */
+            if (lseek(m_size, size, SEEK_SET) >= 0) {
+                char c;
+                if (read(m_fd, &c, sizeof(char)) == -1) {
+                    c = 0;
+                }
+                if (write(m_fd, &c, sizeof(char)) == -1) {
+                    return false;   // Failed to write the last position.
+                }
+            } else {
+                return false;       // Failed to expand the file.
+            }
+        }
+
+        /* Map the file into process memory. */
+        m_data = mmap(
+            NULL,
+            size,
+            (mmfm->flags & MMFMOF_READONLY) ? PROT_READ : (PROT_READ | PROT_WRITE),
+            MAP_SHARED,
+            m_fd,
+            0);
+
+        m_size = size;
+        return true;
+    }
+
+    void free()
+    {
+        if (m_data != NULL) {
+            munmap(m_data, m_size);   
+            m_data = NULL;
+        }
+        m_size = 0;
+    }
+
+    size_type size() const
+    {
+        return m_size;
+    }
+
+    char* data() const
+    {
+        return m_data;
+    }
+
+    const char* const_data() const
+    {
+        return m_data;
+    }
+   
+    static int alignment()
+    {
+        return 0;
+    }
+};
 
 #endif/*__MEMORY_MAPPED_FILE_POSIX_H__*/
