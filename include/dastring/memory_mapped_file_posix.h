@@ -1,0 +1,5 @@
+#ifndef __MEMORY_MAPPED_FILE_POSIX_H__
+#define __MEMORY_MAPPED_FILE_POSIX_H__
+
+
+#endif/*__MEMORY_MAPPED_FILE_POSIX_H__*/
