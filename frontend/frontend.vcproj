@@ -195,7 +195,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\include\memory_mapped_file_posix.h"
+				RelativePath="..\include\dastring\memory_mapped_file_posix.h"
 				>
 			</File>
 			<File

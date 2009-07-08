@@ -4,7 +4,8 @@
 #include <memory.h>
 #include <windows.h>
 
-class memory_mapped_file_win32 : public memory_mapped_file_base
+class memory_mapped_file_win32 :
+    public memory_mapped_file_base
 {
 public:
     typedef size_t size_type;
@@ -125,6 +126,7 @@ public:
 	    }
 
 	    m_size = size;
+        return true;
     }
 
     void free()

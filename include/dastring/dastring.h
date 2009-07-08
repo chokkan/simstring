@@ -532,7 +532,7 @@ public:
     }
 
     template <class query_type, class insert_iterator>
-    void retrieve(query_type& query, insert_iterator ins)
+    void retrieve(const query_type& query, insert_iterator ins)
     {
         typename base_type::results_type results;
         base_type::search(query, results);

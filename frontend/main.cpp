@@ -71,12 +71,12 @@ int usage(std::ostream& os, const char *argv0)
 
 int build(option& opt)
 {
-    ngram_generator_type gen(opt.ngram_size);
-
-    writer_type db(gen);
+    int n = 0;
     std::istream& is = std::cin;
     std::ostream& os = std::cout;
 
+    ngram_generator_type gen(opt.ngram_size);
+    writer_type db(gen);
     db.open(opt.name);
 
     for (;;) {
@@ -86,8 +86,13 @@ int build(option& opt)
             break;
         }
         db.insert(line);
+        ++n;
+        if (n % 10000 == 0) {
+            os << n << "strings inserted" << std::endl;
+        }
     }
 
+    os << "Finished: " << n << " strings inserted." << std::endl;
     db.close();    
     return 0;
 }
