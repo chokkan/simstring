@@ -185,6 +185,7 @@ class writer_base :
 {
 public:
     typedef string_tmpl string_type;
+    typedef ngram_generator_tmpl ngram_generator_type;
     typedef uint32_t value_type;
     /// The type representing a character.
     typedef typename string_type::value_type char_type;
@@ -224,7 +225,7 @@ public:
     void close()
     {
         if (!m_name.empty()) {
-            store(m_name);
+            this->store(m_name);
         }
         if (m_ofs.is_open()) {
             this->write_header(m_ofs);
@@ -339,7 +340,7 @@ public:
     }
 
     template <class query_type>
-    void retrieve(const query_type& query, results_type& results)
+    void search(const query_type& query, results_type& results)
     {
         int i;
         const int qlen = query.length();
@@ -530,17 +531,17 @@ public:
         base_type::close();
     }
 
-    template <class query_type, class callback_type>
-    void retrieve(query_type& query, callback_type func)
+    template <class query_type, class insert_iterator>
+    void retrieve(query_type& query, insert_iterator ins)
     {
         typename base_type::results_type results;
-        base_type::retrieve(query, results);
+        base_type::search(query, results);
         typename base_type::results_type::const_iterator it;
         const char* strings = m_strings.const_data();
         for (it = results.begin();it != results.end();++it) {
             ngrams_type xgrams;
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
-            func(xstr);
+            *ins = xstr;
         }
     }
 };

@@ -16,16 +16,16 @@ public:
     typedef size_t size_type;
 
 protected:
-	int                     m_fd;
+    int                     m_fd;
     std::ios_base::openmode m_mode;
-	void*                   m_data;
-	size_type               m_size;
+    void*                   m_data;
+    size_type               m_size;
 
 public:
     memory_mapped_file_posix()
     {
         m_fd = -1;
-        m_mode = 0;
+        m_mode = std::ios_base::in;
         m_data = NULL;
         m_size = 0;
     }
@@ -41,25 +41,25 @@ public:
         struct stat buf;
 
         if (mode & std::ios_base::in) {
-			flags = O_RDONLY;
-		}
+            flags = O_RDONLY;
+        }
         if (mode & std::ios_base::out) {
-			flags = O_RDWR | O_CREAT;
-		}
-		if (mode & std::ios_base::trunc) {
-			flags |= (O_RDWR | O_TRUNC);
-		}
+            flags = O_RDWR | O_CREAT;
+        }
+        if (mode & std::ios_base::trunc) {
+            flags |= (O_RDWR | O_TRUNC);
+        }
 
-        m_fd = open(path.c_str(), flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        m_fd = ::open(path.c_str(), flags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
         if (m_fd != -1) {
-            if (fstat(mmfm->fd, &buf) == 0) {
+            if (::fstat(m_fd, &buf) == 0) {
                 m_mode = mode;
-                this->resize(buf.st_size);
+                this->resize((size_type)buf.st_size);
             } else {
-                close(m_fd);
+                ::close(m_fd);
             }
         }
-	}
+    }
 
     bool is_open() const
     {
@@ -70,10 +70,10 @@ public:
     {
         this->free();
         if (m_fd != -1) {
-            close(m_fd);
+            ::close(m_fd);
             m_fd = -1;
         }
-	}
+    }
 
     bool resize(size_type size)
     {
@@ -82,15 +82,15 @@ public:
             return true;
         }
 
-        if (mmfm->fd == -1) {
+        if (m_fd == -1) {
             return false;
         }
 
         this->free();
 
-        if ((m_mode & std::ios_base::out && m_size < size) {
+        if ((m_mode & std::ios_base::out) && m_size < size) {
             /* Try to expand the file to the specified size. */
-            if (lseek(m_size, size, SEEK_SET) >= 0) {
+            if (::lseek(m_size, size, SEEK_SET) >= 0) {
                 char c;
                 if (read(m_fd, &c, sizeof(char)) == -1) {
                     c = 0;
@@ -104,10 +104,10 @@ public:
         }
 
         /* Map the file into process memory. */
-        m_data = mmap(
+        m_data = ::mmap(
             NULL,
             size,
-            (mmfm->flags & MMFMOF_READONLY) ? PROT_READ : (PROT_READ | PROT_WRITE),
+            (m_mode & std::ios_base::out) ? (PROT_READ | PROT_WRITE) : PROT_READ,
             MAP_SHARED,
             m_fd,
             0);
@@ -119,7 +119,7 @@ public:
     void free()
     {
         if (m_data != NULL) {
-            munmap(m_data, m_size);   
+            ::munmap(m_data, m_size);   
             m_data = NULL;
         }
         m_size = 0;
@@ -132,12 +132,12 @@ public:
 
     char* data() const
     {
-        return m_data;
+        return reinterpret_cast<char*>(m_data);
     }
 
     const char* const_data() const
     {
-        return m_data;
+        return reinterpret_cast<const char*>(m_data);
     }
    
     static int alignment()

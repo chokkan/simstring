@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <vector>
 #include <dastring/dastring.h>
@@ -6,6 +7,7 @@
 #include "optparse.h"
 
 typedef std::string string_type;
+typedef std::vector<string_type> strings_type;
 typedef dastring::ngram_generator ngram_generator_type;
 typedef dastring::writer_base<string_type, ngram_generator_type> writer_type;
 typedef dastring::reader_base<string_type> reader_type;
@@ -60,10 +62,11 @@ public:
     END_OPTION_MAP()
 };
 
-static void usage(std::ostream& os, const char *argv0)
+int usage(std::ostream& os, const char *argv0)
 {
     os << "USAGE: " << argv0 << " [OPTIONS]" << std::endl;
     os << std::endl;
+    return 0;
 }
 
 int build(option& opt)
@@ -87,11 +90,6 @@ int build(option& opt)
 
     db.close();    
     return 0;
-}
-
-static void retrieve_callback(const string_type& str)
-{
-    std::cout << '\t' << str << std::endl;
 }
 
 int interactive(option& opt)
@@ -132,20 +130,38 @@ int interactive(option& opt)
 
         } else if (line.compare(0, 2, "s ") == 0) {
             std::string qstr = line.substr(2);
+            strings_type xstrs;
 
             switch (opt.query_type) {
             case option::QT_EXACT:
-                db.retrieve(query_exact_type(gen, qstr), retrieve_callback);
+                db.retrieve(
+                    query_exact_type(gen, qstr),
+                    std::back_inserter(xstrs)
+                    );
                 break;
             case option::QT_DICE:
-                db.retrieve(query_dice_type(gen, qstr, opt.threshold), retrieve_callback);
+                db.retrieve(
+                    query_dice_type(gen, qstr, opt.threshold),
+                    std::back_inserter(xstrs)
+                    );
                 break;
             case option::QT_COSINE:
-                db.retrieve(query_cosine_type(gen, qstr, opt.threshold), retrieve_callback);
+                db.retrieve(
+                    query_cosine_type(gen, qstr, opt.threshold),
+                    std::back_inserter(xstrs)
+                    );
                 break;
             case option::QT_JACCARD:
-                db.retrieve(query_jaccard_type(gen, qstr, opt.threshold), retrieve_callback);
+                db.retrieve(
+                    query_jaccard_type(gen, qstr, opt.threshold),
+                    std::back_inserter(xstrs)
+                    );
                 break;
+            }
+
+            strings_type::const_iterator it;
+            for (it = xstrs.begin();it != xstrs.end();++it) {
+                os << '\t' << *it << std::endl;
             }
 
         } else {

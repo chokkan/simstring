@@ -26,7 +26,7 @@ public:
 #include "memory_mapped_file_win32.h"
 #define memory_mapped_file memory_mapped_file_win32
 
-#else   defined(HAVE_MMAP)
+#else
 #include "memory_mapped_file_posix.h"
 #define memory_mapped_file memory_mapped_file_posix
 

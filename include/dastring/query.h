@@ -38,7 +38,13 @@ public:
     query_base(const ngram_generator_type& gen, const string_type& query, double th = 1.)
         : m_gen(gen)
     {
-        this->set(query, th)
+        this->set(query, th);
+    }
+
+    query_base(const query_base& rho) :
+        m_qstr(rho.m_qstr), m_qgram(rho.m_qgram),
+        m_gen(rho.m_gen), m_th(rho.m_th)
+    {
     }
 
     virtual ~query_base()
@@ -157,32 +163,19 @@ public:
     {
     }
 
-    inline void set(const string_type& query, double th)
-    {
-        base_type::set(query);
-        m_th = th;
-    }
-
-    template <class iterator_type>
-    inline void set(iterator_type first, iterator_type last, double th)
-    {
-        base_type::set(first, last);
-        m_th = th;
-    }
-
     inline int min_length() const
     {
-        return (int)std::ceil(m_th * m_th * this->length());
+        return (int)std::ceil(this->m_th * this->m_th * this->length());
     }
 
     inline int max_length() const
     {
-        return (int)std::floor(this->length() / (m_th * m_th));
+        return (int)std::floor(this->length() / (this->m_th * this->m_th));
     }
 
     inline int min_match(int length) const
     {
-        return (int)std::ceil(m_th * std::sqrt((double)this->length() * length));
+        return (int)std::ceil(this->m_th * std::sqrt((double)this->length() * length));
     }
 };
 
@@ -213,32 +206,20 @@ public:
     {
     }
 
-    inline void set(const string_type& query, double th)
-    {
-        base_type::set(query);
-        m_th = th;
-    }
-
-    template <class iterator_type>
-    inline void set(iterator_type first, iterator_type last, double th)
-    {
-        base_type::set(first, last);
-        m_th = th;
-    }
 
     inline int min_length() const
     {
-        return (int)std::ceil(m_th * this->length() / (2. - m_th));
+        return (int)std::ceil(this->m_th * this->length() / (2. - this->m_th));
     }
 
     inline int max_length() const
     {
-        return (int)std::floor((2. - m_th) * this->length() / m_th);
+        return (int)std::floor((2. - this->m_th) * this->length() / this->m_th);
     }
 
     inline int min_match(int length) const
     {
-        return (int)std::ceil(0.5 * m_th * (this->length() + length));
+        return (int)std::ceil(0.5 * this->m_th * (this->length() + length));
     }
 };
 
@@ -269,32 +250,19 @@ public:
     {
     }
 
-    inline void set(const string_type& query, double th)
-    {
-        base_type::set(query);
-        m_th = th;
-    }
-
-    template <class iterator_type>
-    inline void set(iterator_type first, iterator_type last, double th)
-    {
-        base_type::set(first, last);
-        m_th = th;
-    }
-
     inline int min_length() const
     {
-        return (int)std::ceil(m_th * this->length());
+        return (int)std::ceil(this->m_th * this->length());
     }
 
     inline int max_length() const
     {
-        return (int)std::floor(this->length() / m_th);
+        return (int)std::floor(this->length() / this->m_th);
     }
 
     inline int min_match(int length) const
     {
-        return (int)std::ceil(m_th * (this->length() + length) / (1 + m_th));
+        return (int)std::ceil(this->m_th * (this->length() + length) / (1 + this->m_th));
     }
 };
 
