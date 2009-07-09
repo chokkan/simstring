@@ -115,61 +115,59 @@ int interactive(option& opt)
             break;
         }
 
-        if (line.compare(0, 7, "q exact") == 0) {
+        if (line.compare(0, 16, ":set query exact") == 0) {
             opt.query_type = option::QT_EXACT;
 
-        } else if (line.compare(0, 7, "q dice ") == 0) {
+        } else if (line.compare(0, 16, ":set query dice ") == 0) {
             opt.query_type = option::QT_DICE;
-            opt.threshold = std::atof(line.c_str() + 7);
+            opt.threshold = std::atof(line.c_str() + 16);
 
-        } else if (line.compare(0, 9, "q cosine ") == 0) {
+        } else if (line.compare(0, 18, ":set query cosine ") == 0) {
             opt.query_type = option::QT_COSINE;
-            opt.threshold = std::atof(line.c_str() + 9);
+            opt.threshold = std::atof(line.c_str() + 18);
 
-        } else if (line.compare(0, 10, "q jaccard ") == 0) {
+        } else if (line.compare(0, 19, ":set query jaccard ") == 0) {
             opt.query_type = option::QT_JACCARD;
-            opt.threshold = std::atof(line.c_str() + 10);
+            opt.threshold = std::atof(line.c_str() + 19);
 
-        } else if (line.compare(0, 1, "h") == 0) {
+        } else if (line.compare(0, 5, ":help") == 0) {
             //usage_interactive(os);
 
-        } else if (line.compare(0, 2, "s ") == 0) {
-            std::string qstr = line.substr(2);
+        } else {
             strings_type xstrs;
 
             switch (opt.query_type) {
             case option::QT_EXACT:
                 db.retrieve(
-                    query_exact_type(gen, qstr),
+                    query_exact_type(gen, line),
                     std::back_inserter(xstrs)
                     );
                 break;
             case option::QT_DICE:
                 db.retrieve(
-                    query_dice_type(gen, qstr, opt.threshold),
+                    query_dice_type(gen, line, opt.threshold),
                     std::back_inserter(xstrs)
                     );
                 break;
             case option::QT_COSINE:
                 db.retrieve(
-                    query_cosine_type(gen, qstr, opt.threshold),
+                    query_cosine_type(gen, line, opt.threshold),
                     std::back_inserter(xstrs)
                     );
                 break;
             case option::QT_JACCARD:
                 db.retrieve(
-                    query_jaccard_type(gen, qstr, opt.threshold),
+                    query_jaccard_type(gen, line, opt.threshold),
                     std::back_inserter(xstrs)
                     );
                 break;
             }
 
+            os << "Retrieved " << xstrs.size() << std::endl;
             strings_type::const_iterator it;
             for (it = xstrs.begin();it != xstrs.end();++it) {
                 os << '\t' << *it << std::endl;
             }
-
-        } else {
 
         }
 
