@@ -364,7 +364,7 @@ public:
      * Constructs an object.
      */
     cdbpp()
-        : m_buffer(NULL), m_size(0), m_own(false)
+        : m_buffer(NULL), m_size(0), m_own(false), m_n(0)
     {
     }
 
@@ -376,7 +376,7 @@ public:
      *                      delete[] when the database is closed.
      */
     cdbpp(const void *buffer, size_t size, bool own)
-        : m_buffer(NULL), m_size(0), m_own(false)
+        : m_buffer(NULL), m_size(0), m_own(false), m_n(0)
     {
         this->open(buffer, size, own);
     }
@@ -387,7 +387,7 @@ public:
      *                      a database.
      */
     cdbpp(std::ifstream& ifs)
-        : m_buffer(NULL), m_size(0), m_own(false)
+        : m_buffer(NULL), m_size(0), m_own(false), m_n(0)
     {
         this->open(ifs);
     }
