@@ -167,6 +167,12 @@ int interactive(option& opt)
                     std::back_inserter(xstrs)
                     );
                 break;
+            case option::QT_OVERLAP:
+                db.retrieve(
+                    query_overlap_type(gen, line, opt.threshold),
+                    std::back_inserter(xstrs)
+                    );
+                break;
             }
 
             os << "Retrieved " << xstrs.size() << std::endl;

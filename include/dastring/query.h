@@ -296,12 +296,12 @@ public:
 
     inline int min_length() const
     {
-        return 1;               // No length constraint.
+        return 1;
     }
 
     inline int max_length() const
     {
-        return (int)INT_MAX;    // No length constraint.
+        return (int)INT_MAX;
     }
 
     inline int min_match(int length) const
