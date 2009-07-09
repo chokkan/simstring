@@ -15,6 +15,7 @@ typedef dastring::query::exact<string_type, ngram_generator_type> query_exact_ty
 typedef dastring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
 typedef dastring::query::dice<string_type, ngram_generator_type> query_dice_type;
 typedef dastring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
+typedef dastring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
 
 class option : public optparse
 {
@@ -30,6 +31,7 @@ public:
         QT_DICE,
         QT_COSINE,
         QT_JACCARD,
+        QT_OVERLAP,
     };
 
     int mode;
@@ -88,7 +90,7 @@ int build(option& opt)
         db.insert(line);
         ++n;
         if (n % 10000 == 0) {
-            os << n << "strings inserted" << std::endl;
+            os << n << " strings inserted" << std::endl;
         }
     }
 
@@ -128,6 +130,10 @@ int interactive(option& opt)
 
         } else if (line.compare(0, 19, ":set query jaccard ") == 0) {
             opt.query_type = option::QT_JACCARD;
+            opt.threshold = std::atof(line.c_str() + 19);
+
+        } else if (line.compare(0, 19, ":set query overlap ") == 0) {
+            opt.query_type = option::QT_OVERLAP;
             opt.threshold = std::atof(line.c_str() + 19);
 
         } else if (line.compare(0, 5, ":help") == 0) {

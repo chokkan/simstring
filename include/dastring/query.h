@@ -4,6 +4,7 @@
 #include <iterator>
 #include <set>
 #include <vector>
+#include <limits.h>
 
 namespace dastring { namespace query {
 
@@ -266,6 +267,49 @@ public:
         return (int)std::ceil(this->m_th * (this->length() + length) / (1 + this->m_th));
     }
 };
+
+
+
+template <class string_tmpl, class ngram_generator_tmpl>
+class overlap :
+    public query_base<string_tmpl, ngram_generator_tmpl>
+{
+public:
+    typedef string_tmpl string_type;
+    typedef ngram_generator_tmpl ngram_generator_type;
+    typedef query_base<string_tmpl, ngram_generator_tmpl> base_type;
+
+public:
+    overlap(const ngram_generator_type& gen)
+        : base_type(gen)
+    {
+    }
+
+    overlap(const ngram_generator_type& gen, const string_type& query, double th)
+        : base_type(gen, query, th)
+    {
+    }
+
+    virtual ~overlap()
+    {
+    }
+
+    inline int min_length() const
+    {
+        return 1;               // No length constraint.
+    }
+
+    inline int max_length() const
+    {
+        return (int)INT_MAX;    // No length constraint.
+    }
+
+    inline int min_match(int length) const
+    {
+        return (int)std::ceil(this->m_th * std::min(this->length(), length));
+    }
+};
+
 
 
 }; };

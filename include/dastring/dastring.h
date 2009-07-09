@@ -349,9 +349,8 @@ public:
         // Compute the range of n-gram lengths for the candidate strings;
         // in other words, we do not have to search for strings whose n-gram
         // lengths are out of this range.
-        int xmin = query.min_length();
-        int xmax = query.max_length();
-        if (m_max_length < xmax) xmax = m_max_length;
+        const int xmin = std::max(query.min_length(), 1);
+        const int xmax = std::min(query.max_length(), m_max_length);
 
         // Loop for each length in the range.
         for (int xlen = xmin;xlen <= xmax;++xlen) {
