@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <ctime>
 #include <iostream>
 #include <iterator>
 #include <string>
@@ -58,6 +60,9 @@ public:
         ON_OPTION_WITH_ARG(SHORTOPT('d') || LONGOPT("database"))
             name = arg;
 
+        ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
+            ngram_size = std::atoi(arg);
+
         ON_OPTION(SHORTOPT('h') || LONGOPT("help"))
             mode = MODE_HELP;
 
@@ -74,28 +79,44 @@ int usage(std::ostream& os, const char *argv0)
 int build(option& opt)
 {
     int n = 0;
+    clock_t clk;
     std::istream& is = std::cin;
     std::ostream& os = std::cout;
 
-    ngram_generator_type gen(opt.ngram_size);
-    writer_type db(gen);
-    db.open(opt.name);
+    os << "DAString database construction" << std::endl;
+    os << "Database name: " << opt.name << std::endl;
+    os << "N-gram length: " << opt.ngram_size << std::endl;
+    os << std::endl;
 
+    // Open the database for construction.
+    clk = std::clock();
+    ngram_generator_type gen(opt.ngram_size);
+    writer_type db(gen, opt.name);
+
+    // Insert every string from STDIN into the database.
     for (;;) {
         std::string line;
         std::getline(is, line);
         if (is.eof()) {
             break;
         }
+
         db.insert(line);
-        ++n;
-        if (n % 10000 == 0) {
-            os << n << " strings inserted" << std::endl;
+
+        if (++n % 10000 == 0) {
+            os << "# strings: " << n << std::endl;
         }
     }
+    os << "# strings: " << n << std::endl;
+    os << std::endl;
 
-    os << "Finished: " << n << " strings inserted." << std::endl;
-    db.close();    
+    os << "Flushing the database" << std::endl;
+    db.close();
+    os << std::endl;
+
+    os << "Seconds required: "
+        << (std::clock() - clk) / (double)CLOCKS_PER_SEC << std::endl;
+    os << std::endl;
     return 0;
 }
 

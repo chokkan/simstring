@@ -205,6 +205,18 @@ public:
     }
 
     /**
+     * Constructs an object.
+     */
+    writer_base(
+        const ngram_generator_type& gen,
+        const std::string& name
+        )
+        : base_type(gen), m_num_entries(0)
+    {
+        this->open(name);
+    }
+
+    /**
      * Destructs an object.
      */
     virtual ~writer_base()
