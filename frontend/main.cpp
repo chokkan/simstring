@@ -91,7 +91,6 @@ int build(option& opt)
     os << "Constructing the database" << std::endl;
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
-    os << std::endl;
 
     // Open the database for construction.
     clk = std::clock();
@@ -109,10 +108,10 @@ int build(option& opt)
         db.insert(line);
 
         if (++n % 10000 == 0) {
-            os << "# strings: " << n << std::endl;
+            os << "Number of strings: " << n << std::endl;
         }
     }
-    os << "# strings: " << n << std::endl;
+    os << "Number of strings: " << n << std::endl;
     os << std::endl;
 
     os << "Flushing the database" << std::endl;
@@ -224,7 +223,6 @@ int main(int argc, char *argv[])
     // Show the copyright information.
     os << DASTRING_NAME " ";
     os << DASTRING_MAJOR_VERSION << "." << DASTRING_MINOR_VERSION << " ";
-    os << "trainer ";
     os << DASTRING_COPYRIGHT << std::endl;
     os << std::endl;
 
