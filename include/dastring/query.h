@@ -111,9 +111,13 @@ public:
     }
 
     exact(const ngram_generator_type& gen, const string_type& query)
-        : base_type(gen)
+        : base_type(gen, query)
     {
-        this->set(query);
+    }
+
+    exact(const exact& rho)
+        : base_type(rho)
+    {
     }
 
     virtual ~exact()
@@ -154,9 +158,8 @@ public:
     }
 
     cosine(const ngram_generator_type& gen, const string_type& query, double th)
-        : base_type(gen)
+        : base_type(gen, query, th)
     {
-        this->set(query, th);
     }
 
     virtual ~cosine()
@@ -197,9 +200,8 @@ public:
     }
 
     dice(const ngram_generator_type& gen, const string_type& query, double th)
-        : base_type(gen)
+        : base_type(gen, query, th)
     {
-        this->set(query, th);
     }
 
     virtual ~dice()
@@ -241,9 +243,8 @@ public:
     }
 
     jaccard(const ngram_generator_type& gen, const string_type& query, double th)
-        : base_type(gen)
+        : base_type(gen, query, th)
     {
-        this->set(query, th);
     }
 
     virtual ~jaccard()

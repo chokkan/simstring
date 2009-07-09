@@ -3,7 +3,7 @@
 dastringincludedir = $(includedir)/dastring
 
 dastringinclude_HEADERS = \
-	dastring/cdbm.h \
+	dastring/cdbpp.h \
 	dastring/memory_mapped_file.h \
 	dastring/memory_mapped_file_posix.h \
 	dastring/ngram.h \
