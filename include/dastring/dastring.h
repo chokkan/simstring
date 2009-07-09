@@ -12,7 +12,7 @@
 
 #include "ngram.h"
 #include "query.h"
-#include "cdbm.h"
+#include "cdbpp.h"
 #include "memory_mapped_file.h"
 
 namespace dastring
@@ -156,7 +156,7 @@ protected:
         }
 
         // Open a CDBM writer.
-        cdbm::writer dbw(ofs);
+        cdbpp::builder dbw(ofs);
         typename index_type::const_iterator it;
         for (it = index.begin();it != index.end();++it) {
             // Put an association from an n-gram to its values. 
@@ -275,7 +275,7 @@ public:
     typedef std::vector<string_type> ngrams_type;
     typedef std::set<value_type> results_type;
     //typedef std::map<value_type, int> candidates_type;
-    typedef cdbm::reader index_type;
+    typedef cdbpp::cdbpp index_type;
     
 protected:
     struct posting_type
@@ -457,12 +457,12 @@ protected:
     index_type& open_index(const std::string& base, int length)
     {
         database_type& db = m_dbs[length-1];
-        if (db.index.empty()) {
+        if (!db.index.is_open()) {
             std::stringstream ss;
             ss << base << '.' << length << ".cdb";
             db.image.open(ss.str().c_str(), std::ios::in);
             if (db.image.is_open()) {
-                db.index.init(db.image.data(), db.image.size());
+                db.index.open(db.image.data(), db.image.size());
             }
         }
 
