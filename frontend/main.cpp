@@ -1,3 +1,8 @@
+#define DASTRING_NAME           "DAString"
+#define DASTRING_MAJOR_VERSION  0
+#define DASTRING_MINOR_VERSION  1
+#define DASTRING_COPYRIGHT      "Copyright (c) 2009 Naoaki Okazaki"
+
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
@@ -83,7 +88,7 @@ int build(option& opt)
     std::istream& is = std::cin;
     std::ostream& os = std::cout;
 
-    os << "DAString database construction" << std::endl;
+    os << "Constructing the database" << std::endl;
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
     os << std::endl;
@@ -209,13 +214,19 @@ int interactive(option& opt)
     return 0;
 }
 
-
 int main(int argc, char *argv[])
 {
     option opt;
     std::istream& is = std::cin;
     std::ostream& os = std::cout;
     std::ostream& es = std::cerr;
+
+    // Show the copyright information.
+    os << DASTRING_NAME " ";
+    os << DASTRING_MAJOR_VERSION << "." << DASTRING_MINOR_VERSION << " ";
+    os << "trainer ";
+    os << DASTRING_COPYRIGHT << std::endl;
+    os << std::endl;
 
     // Parse the command-line options.
     try { 
