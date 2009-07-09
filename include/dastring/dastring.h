@@ -168,8 +168,6 @@ protected:
                 );
         }
 
-        // Finalize the CDBM writer.
-        dbw.close();
         return true;
     }
 };
