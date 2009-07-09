@@ -357,7 +357,7 @@ public:
         for (int xlen = xmin;xlen <= xmax;++xlen) {
             // Access to the n-gram index for the length.
             index_type& index = open_index(m_name, xlen);
-            if (index.empty()) {
+            if (!index.is_open()) {
                 // Ignore an empty index.
                 continue;
             }

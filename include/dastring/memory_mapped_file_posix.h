@@ -57,6 +57,7 @@ public:
                 this->resize((size_type)buf.st_size);
             } else {
                 ::close(m_fd);
+                m_fd = -1;
             }
         }
     }
