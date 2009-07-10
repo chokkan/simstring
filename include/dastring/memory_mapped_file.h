@@ -12,7 +12,7 @@ public:
     memory_mapped_file_base() {}
     virtual ~memory_mapped_file_base() {}
 
-    void open(const std::string& path,std::ios_base::openmode mode) {}
+    void open(const std::string& path, std::ios_base::openmode mode) {}
     bool is_open() const {return false; }
     void close() {}
     void resize(size_type size) {}

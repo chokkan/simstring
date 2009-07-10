@@ -18,10 +18,14 @@
 namespace dastring
 {
 
+
+
 /**
- * A writer for an N-gram database.
- *  @param  char_tmpl       The type of a character.
- *  @param  value_tmpl      The value type, which must be a basic type.
+ * A writer for an n-gram database.
+ *  @param  string_tmpl             The type of a string.
+ *  @param  value_tmpl              The value type.
+ *                                  This is required to be an integer type.
+ *  @param  ngram_generator_tmpl    The type of an n-gram generator.
  */
 template <
     class string_tmpl,
@@ -53,11 +57,13 @@ protected:
     indices_type m_indices;
     /// The n-gram generator.
     const ngram_generator_type& m_gen;
+    /// The error message.
+    std::stringstream m_error;
 
 public:
     /**
      * Constructs an object.
-     *  @param  ngram_length    The length of n-grams.
+     *  @param  gen             The n-gram generator.
      */
     ngramdb_writer_base(const ngram_generator_type& gen)
         : m_gen(gen)
@@ -71,19 +77,49 @@ public:
     {
     }
 
+    /**
+     * Clears the database.
+     */
+    void clear()
+    {
+        m_indices.clear();
+        m_errormsg.clear();
+    }
+
+    /**
+     * Checks whether the database is empty.
+     *  @return bool    \c true if the database is empty, \c false otherwise.
+     */
     bool empty()
     {
         return m_indices.empty();
     }
 
-    void clear()
-    {
-        m_indices.clear();
-    }
-
+    /**
+     * Returns the maximum length of keys in the n-gram database.
+     *  @return int     The maximum length of keys.
+     */
     int max_length() const
     {
         return (int)m_indices.size();
+    }
+
+    /**
+     * Checks whether an error has occurred.
+     *  @return bool    \c true if an error has occurred.
+     */
+    bool fail() const
+    {
+        return !m_error.str().empty();
+    }
+
+    /**
+     * Returns an error message.
+     *  @return std::string The string of the error message.
+     */
+    std::string error() const
+    {
+        return m_error.str();
     }
 
     /**
@@ -100,8 +136,8 @@ public:
             return false;
         }
 
-        // Resize the index array for the number of the n-grams because we
-        // builds an index for each n-gram number.
+        // Resize the index array for the number of the n-grams;
+        // we build an index for each n-gram number.
         if (m_indices.size() < ngrams.size()) {
             m_indices.resize(ngrams.size());
         }
@@ -130,7 +166,7 @@ public:
      * Stores the n-gram database to files.
      *  @param  name        The prefix of file names.
      */
-    bool store(const std::string& base) const
+    bool store(const std::string& base)
     {
         for (int i = 0;i < (int)m_indices.size();++i) {
             if (!m_indices[i].empty()) {
@@ -147,25 +183,34 @@ public:
     }
 
 protected:
-    bool store(const string_type& name, const index_type& index) const
+    bool store(const string_type& name, const index_type& index)
     {
         // Open the database file with binary mode.
         std::ofstream ofs(name.c_str(), std::ios::binary);
         if (ofs.fail()) {
+            m_error << "Failed to open a file for writing: " << name;
             return false;
         }
 
-        // Open a CDBM writer.
-        cdbpp::builder dbw(ofs);
-        typename index_type::const_iterator it;
-        for (it = index.begin();it != index.end();++it) {
-            // Put an association from an n-gram to its values. 
-            dbw.put(
-                it->first.c_str(),
-                sizeof(char_type) * it->first.length(),
-                &it->second[0],
-                sizeof(it->second[0]) * it->second.size()
-                );
+        try {
+            // Open a CDB++ writer.
+            cdbpp::builder dbw(ofs);
+
+            // Put associations: n-gram -> values.
+            typename index_type::const_iterator it;
+            for (it = index.begin();it != index.end();++it) {
+                // Put an association from an n-gram to its values. 
+                dbw.put(
+                    it->first.c_str(),
+                    sizeof(char_type) * it->first.length(),
+                    &it->second[0],
+                    sizeof(it->second[0]) * it->second.size()
+                    );
+            }
+
+        } catch (const cdbpp::builder_exception& e) {
+            m_error << "CDB++ error: " << e.what();
+            return false;
         }
 
         return true;
@@ -182,12 +227,15 @@ class writer_base :
     public ngramdb_writer_base<string_tmpl, uint32_t, ngram_generator_tmpl>
 {
 public:
+    /// The type representing a string.
     typedef string_tmpl string_type;
-    typedef ngram_generator_tmpl ngram_generator_type;
+    /// The type of values associated with key strings.
     typedef uint32_t value_type;
+    /// The function type for generating n-grams from a key string.
+    typedef ngram_generator_tmpl ngram_generator_type;
     /// The type representing a character.
     typedef typename string_type::value_type char_type;
-    /// 
+    /// The type of the base class.
     typedef ngramdb_writer_base<string_tmpl, uint32_t, ngram_generator_tmpl> base_type;
 
 protected:
@@ -198,6 +246,7 @@ protected:
 public:
     /**
      * Constructs an object.
+     *  @param  gen             The n-gram generator.
      */
     writer_base(const ngram_generator_type& gen)
         : base_type(gen), m_num_entries(0)
@@ -205,7 +254,9 @@ public:
     }
 
     /**
-     * Constructs an object.
+     * Constructs an object by opening a database.
+     *  @param  gen             The n-gram generator.
+     *  @param  name            The name of the database.
      */
     writer_base(
         const ngram_generator_type& gen,
@@ -224,23 +275,60 @@ public:
         close();
     }
 
-    void open(const std::string& name)
+    /**
+     * Opens a database.
+     *  @param  name            The name of the database.
+     *  @return bool            \c true if the database is successfully opened,
+     *                          \c false otherwise.
+     */
+    bool open(const std::string& name)
     {
-        m_name = name;
         m_num_entries = 0;
+
+        // Open the master file for writing.
         m_ofs.open(name.c_str(), std::ios::binary);
-        this->write_header(m_ofs);
+        if (m_ofs.fail()) {
+            this->m_error << "Failed to open a file for writing: " << name;
+            return false;
+        }
+
+        // Reserve the region for a file header.
+        if (!this->write_header(m_ofs)) {
+            m_ofs.close();
+            return false;
+        }
+
+        m_name = name;
+        return true;
     }
 
-    void close()
+    /**
+     * Closes the database.
+     *  @param  name            The name of the database.
+     *  @return bool            \c true if the database is successfully opened,
+     *                          \c false otherwise.
+     */
+    bool close()
     {
+        bool b = true;
+
+        // Write the n-gram database to files.
         if (!m_name.empty()) {
-            this->store(m_name);
+            b &= this->store(m_name);
         }
+
+        // Finalize the file header.
         if (m_ofs.is_open()) {
-            this->write_header(m_ofs);
+            b &= this->write_header(m_ofs);
         }
+
+        // Close the file.
+        m_ofs.close();
+
+        // Initialize the members.
         m_name.clear();
+        m_num_entries = 0;
+        return b;
     }
 
     /**
@@ -249,22 +337,50 @@ public:
      */
     bool insert(const string_type& key)
     {
+        // This will be the offset address to access the key string.
         value_type off = (value_type)(std::streamoff)m_ofs.tellp();
+
+        // Write the key string to the master file.
         m_ofs.write(key.c_str(), sizeof(char_type) * (key.length()+1));
+        if (m_ofs.fail()) {
+            this->m_error << "Failed to write a string to the master file.";
+            return false;
+        }
         ++m_num_entries;
+
+        // Insert the n-grams of the key string to the database.
         return base_type::insert(key, off);
     }
 
 protected:
-    void write_header(std::ofstream& ofs)
+    bool write_header(std::ofstream& ofs)
     {
         uint32_t num_entries = m_num_entries;
         uint32_t max_length = (uint32_t)this->max_length();
 
+        // Seek to the beginning of the master file, to which the file header
+        // is to be written.
         ofs.seekp(0);
+        if (ofs.fail()) {
+            this->m_error << "Failed to seek the file pointer for the master file.";
+            return false;
+        }
+
+        // Write the file header.
         m_ofs.write("SSDB", 4);
-        m_ofs.write(reinterpret_cast<char*>(&num_entries), sizeof(num_entries));
-        m_ofs.write(reinterpret_cast<char*>(&max_length), sizeof(max_length));
+        write_uint32(num_entries);
+        write_uint32(max_length);
+        if (ofs.fail()) {
+            this->m_error << "Failed to write a file header to the master file.";
+            return false;
+        }
+
+        return true;
+    }
+
+    inline void write_uint32(uint32_t value)
+    {
+        m_ofs.write(reinterpret_cast<const char *>(&value), sizeof(value));
     }
 };
 

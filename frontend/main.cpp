@@ -87,7 +87,9 @@ int build(option& opt)
     clock_t clk;
     std::istream& is = std::cin;
     std::ostream& os = std::cout;
+    std::ostream& es = std::cerr;
 
+    // Show parameters for database construction.
     os << "Constructing the database" << std::endl;
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
@@ -96,6 +98,10 @@ int build(option& opt)
     clk = std::clock();
     ngram_generator_type gen(opt.ngram_size);
     writer_type db(gen, opt.name);
+    if (db.fail()) {
+        es << "ERROR: " << db.error() << std::endl;
+        return 1;
+    }
 
     // Insert every string from STDIN into the database.
     for (;;) {
@@ -105,8 +111,12 @@ int build(option& opt)
             break;
         }
 
-        db.insert(line);
+        if (!db.insert(line)) {
+            es << "ERROR: " << db.error() << std::endl;
+            return 1;
+        }
 
+        // Progress report.
         if (++n % 10000 == 0) {
             os << "Number of strings: " << n << std::endl;
         }
@@ -114,13 +124,19 @@ int build(option& opt)
     os << "Number of strings: " << n << std::endl;
     os << std::endl;
 
+    // Finalize the database.
     os << "Flushing the database" << std::endl;
-    db.close();
+    if (!db.close()) {
+        es << "ERROR: " << db.error() << std::endl;
+        return 1;
+    }
     os << std::endl;
 
+    // Report the elaped time for construction.
     os << "Seconds required: "
         << (std::clock() - clk) / (double)CLOCKS_PER_SEC << std::endl;
     os << std::endl;
+
     return 0;
 }
 
