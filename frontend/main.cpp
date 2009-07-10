@@ -93,6 +93,7 @@ int build(option& opt)
     os << "Constructing the database" << std::endl;
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
+    os.flush();
 
     // Open the database for construction.
     clk = std::clock();
@@ -119,10 +120,12 @@ int build(option& opt)
         // Progress report.
         if (++n % 10000 == 0) {
             os << "Number of strings: " << n << std::endl;
+            os.flush();
         }
     }
     os << "Number of strings: " << n << std::endl;
     os << std::endl;
+    os.flush();
 
     // Finalize the database.
     os << "Flushing the database" << std::endl;
@@ -136,6 +139,7 @@ int build(option& opt)
     os << "Seconds required: "
         << (std::clock() - clk) / (double)CLOCKS_PER_SEC << std::endl;
     os << std::endl;
+    os.flush();
 
     return 0;
 }
