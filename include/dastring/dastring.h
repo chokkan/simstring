@@ -83,7 +83,7 @@ public:
     void clear()
     {
         m_indices.clear();
-        m_errormsg.clear();
+        m_error.str("");
     }
 
     /**
