@@ -15,9 +15,18 @@
 #include "cdbpp.h"
 #include "memory_mapped_file.h"
 
+#define	DASTRING_NAME           "DAString"
+#define	DASTRING_COPYRIGHT      "Copyright (c) 2009 Naoaki Okazaki"
+#define	DASTRING_MAJOR_VERSION  0
+#define DASTRING_MINOR_VERSION  2
+#define DASTRING_STREAM_VERSION 1
+
 namespace dastring
 {
 
+enum {
+    BYTEORDER_CHECK = 0x62445371,
+};
 
 
 /**
@@ -357,6 +366,7 @@ protected:
     {
         uint32_t num_entries = m_num_entries;
         uint32_t max_length = (uint32_t)this->max_length();
+        uint32_t size = (uint32_t)m_ofs.tellp();
 
         // Seek to the beginning of the master file, to which the file header
         // is to be written.
@@ -368,6 +378,9 @@ protected:
 
         // Write the file header.
         m_ofs.write("SSDB", 4);
+        write_uint32(size);
+        write_uint32(DASTRING_STREAM_VERSION);
+        write_uint32(BYTEORDER_CHECK);
         write_uint32(num_entries);
         write_uint32(max_length);
         if (ofs.fail()) {
@@ -643,9 +656,28 @@ public:
             return false;
         }
         p += 4;
-        num_entries = *reinterpret_cast<const uint32_t*>(p);
+
+        // Check the chunk size.
+        if (size != read_uint32(p)) {
+            return false;
+        }
         p += 4;
-        max_length = *reinterpret_cast<const uint32_t*>(p);
+
+        // Check the version.
+        if (DASTRING_STREAM_VERSION != read_uint32(p)) {
+            return false;
+        }
+        p += 4;
+
+        // Check the byte order.
+        if (BYTEORDER_CHECK != read_uint32(p)) {
+            return false;
+        }
+        p += 4;
+
+        num_entries = read_uint32(p);
+        p += 4;
+        max_length = read_uint32(p);
 
         base_type::open(name, (int)max_length);
         return true;
@@ -668,6 +700,12 @@ public:
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
             *ins = xstr;
         }
+    }
+
+protected:
+    inline uint32_t read_uint32(const char* p) const
+    {
+        return *reinterpret_cast<const uint32_t*>(p);
     }
 };
 

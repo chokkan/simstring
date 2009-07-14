@@ -1,8 +1,3 @@
-#define DASTRING_NAME           "DAString"
-#define DASTRING_MAJOR_VERSION  0
-#define DASTRING_MINOR_VERSION  1
-#define DASTRING_COPYRIGHT      "Copyright (c) 2009 Naoaki Okazaki"
-
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
