@@ -48,7 +48,7 @@ namespace cdbpp
  * \addtogroup cdbpp_api CDB++ API
  * @{
  *
- *	The CDB++ API.
+ *  The CDB++ API.
  */
 
 // Global constants.
@@ -64,63 +64,80 @@ enum {
 
 
 
-// C++ port of SuperFastHash function.
-class superfasthash :
+/**
+ * MurmurHash2.
+ *
+ *  This code makes the following assumption about how your machine behaves
+ *      - We can read a 4-byte value from any address without crashing.
+ *
+ *  It also has a few limitations:
+ *      - It will not work incrementally.
+ *      - It will not produce the same results on little-endian and big-endian
+ *        machines.
+ *
+ *  @author Austin Appleby
+ */
+class murmurhash2 :
     public std::binary_function<const void *, size_t, uint32_t>
 {
 protected:
-    inline static uint16_t get16bits(const char *d)
+    inline static uint32_t get32bits(const char *d)
     {
-        return *reinterpret_cast<const uint16_t*>(d);
+        return *reinterpret_cast<const uint32_t*>(d);
     }
 
 public:
-    inline uint32_t operator() (const void *key, size_t size)
+    inline uint32_t operator() (const void *key, size_t size) const
     {
-        size_t rem;
-        uint32_t hash = size, tmp;
-        const char *data = reinterpret_cast<const char *>(key);
+        // 'm' and 'r' are mixing constants generated offline.
+        // They're not really 'magic', they just happen to work well.
 
-        if (size == 0 || data == NULL) return 0;
+        const uint32_t m = 0x5bd1e995;
+        const int32_t r = 24;
 
-        rem = size & 3;
-        size >>= 2;
+        // Initialize the hash to a 'random' value
 
-        // Main loop
-        for (;size > 0; size--) {
-            hash  += get16bits (data);
-            tmp    = (get16bits (data+2) << 11) ^ hash;
-            hash   = (hash << 16) ^ tmp;
-            data  += 2*sizeof (uint16_t);
-            hash  += hash >> 11;
+        const uint32_t seed = 0x87654321;
+        uint32_t h = seed ^ size;
+
+        // Mix 4 bytes at a time into the hash
+
+        const char * data = (const char *)key;
+
+        while (size >= 4)
+        {
+            uint32_t k = get32bits(data);
+
+            k *= m; 
+            k ^= k >> r; 
+            k *= m; 
+            
+            h *= m; 
+            h ^= k;
+
+            data += 4;
+            size -= 4;
         }
+        
+        // Handle the last few bytes of the input array
 
-        // Handle end cases
-        switch (rem) {
-            case 3: hash += get16bits (data);
-                    hash ^= hash << 16;
-                    hash ^= data[sizeof (uint16_t)] << 18;
-                    hash += hash >> 11;
-                    break;
-            case 2: hash += get16bits (data);
-                    hash ^= hash << 11;
-                    hash += hash >> 17;
-                    break;
-            case 1: hash += *data;
-                    hash ^= hash << 10;
-                    hash += hash >> 1;
-        }
+        switch (size)
+        {
+        case 3: h ^= data[2] << 16;
+        case 2: h ^= data[1] << 8;
+        case 1: h ^= data[0];
+                h *= m;
+        };
 
-        // Force "avalanching" of final 127 bits
-        hash ^= hash << 3;
-        hash += hash >> 5;
-        hash ^= hash << 4;
-        hash += hash >> 17;
-        hash ^= hash << 25;
-        hash += hash >> 6;
+        // Do a few final mixes of the hash to ensure the last few
+        // bytes are well-incorporated.
 
-        return hash;
-    }
+        h ^= h >> 13;
+        h *= m;
+        h ^= h >> 15;
+
+        return h;
+    } 
 };
 
 
@@ -157,14 +174,15 @@ public:
 /**
  * CDB++ builder.
  */
-class builder
+template <typename hash_function>
+class builder_base
 {
 protected:
     // A bucket structure.
     struct bucket
     {
-	    uint32_t	hash;		// Hash value of the record.
-	    uint32_t	offset;		// Offset address to the actual record.
+        uint32_t    hash;       // Hash value of the record.
+        uint32_t    offset;     // Offset address to the actual record.
 
         bucket() : hash(0), offset(0)
         {
@@ -182,7 +200,7 @@ protected:
     std::ofstream&  m_os;               // Output stream.
     uint32_t        m_begin;
     uint32_t        m_cur;
-	hashtable       m_ht[NUM_TABLES];	// Hash tables.
+    hashtable       m_ht[NUM_TABLES];   // Hash tables.
 
 public:
     /**
@@ -191,7 +209,7 @@ public:
      *                      database. This stream must be opened in the
      *                      binary mode (\c std::ios_base::binary).
      */
-    builder(std::ofstream& os) : m_os(os)
+    builder_base(std::ofstream& os) : m_os(os)
     {
         m_begin = m_os.tellp();
         m_cur = get_data_begin();
@@ -201,7 +219,7 @@ public:
     /**
      * Destructs an object.
      */
-    virtual ~builder()
+    virtual ~builder_base()
     {
         this->close();
     }
@@ -224,9 +242,9 @@ public:
         write_uint32((uint32_t)vsize);
         m_os.write(reinterpret_cast<const char *>(value), vsize);
 
-	    // Compute the hash value and choose a hash table.
-	    uint32_t hv = superfasthash()(static_cast<const void *>(key), ksize);
-	    hashtable& ht = m_ht[hv % NUM_TABLES];
+        // Compute the hash value and choose a hash table.
+        uint32_t hv = hash_function()(static_cast<const void *>(key), ksize);
+        hashtable& ht = m_ht[hv % NUM_TABLES];
 
         // Store the hash value and offset to the hash table.
         ht.push_back(bucket(hv, m_cur));
@@ -243,50 +261,50 @@ protected:
             throw builder_exception("Inconsistent stream offset");
         }
 
-	    // Store the hash tables. At this moment, the file pointer refers to
-		// the offset succeeding the last key/value pair.
-	    for (size_t i = 0;i < NUM_TABLES;++i) {
-		    hashtable& ht = m_ht[i];
+        // Store the hash tables. At this moment, the file pointer refers to
+        // the offset succeeding the last key/value pair.
+        for (size_t i = 0;i < NUM_TABLES;++i) {
+            hashtable& ht = m_ht[i];
 
-		    // Do not write an empty hash table.
-		    if (!ht.empty()) {
-			    // An actual table will have the double size; half elements
+            // Do not write an empty hash table.
+            if (!ht.empty()) {
+                // An actual table will have the double size; half elements
                 // in the table are kept empty.
-			    int n = ht.size() * 2;
+                int n = ht.size() * 2;
 
-			    // Allocate the actual table.
+                // Allocate the actual table.
                 bucket* dst = new bucket[n];
 
-			    // Put hash elements to the table with the open-address method.
-                hashtable::const_iterator it;
+                // Put hash elements to the table with the open-address method.
+                typename hashtable::const_iterator it;
                 for (it = ht.begin();it != ht.end();++it) {
                     int k = (it->hash >> 8) % n;
 
-				    // Find a vacant element.
-				    while (dst[k].offset != 0) {
-					    k = (k+1) % n;
-				    }
+                    // Find a vacant element.
+                    while (dst[k].offset != 0) {
+                        k = (k+1) % n;
+                    }
 
-				    // Store the hash element.
-				    dst[k].hash = it->hash;
-				    dst[k].offset = it->offset;
-			    }
+                    // Store the hash element.
+                    dst[k].hash = it->hash;
+                    dst[k].offset = it->offset;
+                }
 
-			    // Write out the new table.
-			    for (int k = 0;k < n;++k) {
-				    write_uint32(dst[k].hash);
-				    write_uint32(dst[k].offset);
-			    }
+                // Write out the new table.
+                for (int k = 0;k < n;++k) {
+                    write_uint32(dst[k].hash);
+                    write_uint32(dst[k].offset);
+                }
 
-			    // Free the table.
+                // Free the table.
                 delete[] dst;
-		    }
-	    }
+            }
+        }
 
-	    // Store the current position.
+        // Store the current position.
         uint32_t offset = (uint32_t)m_os.tellp();
 
-	    // Rewind the stream position to the beginning.
+        // Rewind the stream position to the beginning.
         m_os.seekp(m_begin);
 
         // Write the file header.
@@ -296,18 +314,18 @@ protected:
         write_uint32(VERSION);
         write_uint32(BYTEORDER_CHECK);
 
-	    // Write references to hash tables. At this moment, dbw->cur points
-		// to the offset succeeding the last key/data pair. 
-	    for (size_t i = 0;i < NUM_TABLES;++i) {
-		    // Offset to the hash table (or zero for non-existent tables).
+        // Write references to hash tables. At this moment, dbw->cur points
+        // to the offset succeeding the last key/data pair. 
+        for (size_t i = 0;i < NUM_TABLES;++i) {
+            // Offset to the hash table (or zero for non-existent tables).
             write_uint32(m_ht[i].empty() ? 0 : m_cur);
-		    // Bucket size is double to the number of elements.
-		    write_uint32(m_ht[i].size() * 2);
-		    // Advance the offset counter.
+            // Bucket size is double to the number of elements.
+            write_uint32(m_ht[i].size() * 2);
+            // Advance the offset counter.
             m_cur += sizeof(uint32_t) * 2 * m_ht[i].size() * 2;
-	    }
+        }
 
-	    // Seek to the last position.
+        // Seek to the last position.
         m_os.seekp(offset);
     }
 
@@ -334,36 +352,37 @@ public:
 /**
  * CDB++ reader.
  */
-class cdbpp
+template <typename hash_function>
+class cdbpp_base
 {
 protected:
     struct bucket_t
     {
-	    uint32_t	hash;		    // Hash value of the record.
-	    uint32_t	offset;		    // Offset address to the actual record.
+        uint32_t    hash;           // Hash value of the record.
+        uint32_t    offset;         // Offset address to the actual record.
     };
 
 
     struct hashtable_t
     {
         uint32_t        num;            // Number of elements in the table.
-	    const bucket_t* buckets;        // Buckets (array of bucket).
+        const bucket_t* buckets;        // Buckets (array of bucket).
     };
 
 
 protected:
-	const uint8_t*  m_buffer;           // Pointer to the memory block.
-	size_t          m_size;             // Size of the memory block.
+    const uint8_t*  m_buffer;           // Pointer to the memory block.
+    size_t          m_size;             // Size of the memory block.
     bool            m_own;              // 
 
-	hashtable_t     m_ht[NUM_TABLES];   // Hash tables.
+    hashtable_t     m_ht[NUM_TABLES];   // Hash tables.
     size_t          m_n;
 
 public:
     /**
      * Constructs an object.
      */
-    cdbpp()
+    cdbpp_base()
         : m_buffer(NULL), m_size(0), m_own(false), m_n(0)
     {
     }
@@ -375,7 +394,7 @@ public:
      *  @param  own         If this is set to \c true, this library will call
      *                      delete[] when the database is closed.
      */
-    cdbpp(const void *buffer, size_t size, bool own)
+    cdbpp_base(const void *buffer, size_t size, bool own)
         : m_buffer(NULL), m_size(0), m_own(false), m_n(0)
     {
         this->open(buffer, size, own);
@@ -386,7 +405,7 @@ public:
      *  @param  ifs         The input stream from which this library reads
      *                      a database.
      */
-    cdbpp(std::ifstream& ifs)
+    cdbpp_base(std::ifstream& ifs)
         : m_buffer(NULL), m_size(0), m_own(false), m_n(0)
     {
         this->open(ifs);
@@ -395,7 +414,7 @@ public:
     /**
      * Destructs the object.
      */
-    virtual ~cdbpp()
+    virtual ~cdbpp_base()
     {
         close();
     }
@@ -439,40 +458,42 @@ public:
         char chunk[4], size[4];
         std::istream::pos_type offset = ifs.tellg();
 
-        // Read a chunk identifier.
-        ifs.read(chunk, 4);
-        if (ifs.fail()) {
-            goto error_exit;
-        }
+        do {
+            // Read a chunk identifier.
+            ifs.read(chunk, 4);
+            if (ifs.fail()) {
+                break;
+            }
 
-        // Check the chunk identifier.
-        if (std::strncmp(chunk, "CDB+", 4) != 0) {
-            goto error_exit;
-        }
+            // Check the chunk identifier.
+            if (std::strncmp(chunk, "CDB+", 4) != 0) {
+                break;
+            }
 
-        // Read the size of the chunk.
-        ifs.read(size, 4);
-        if (ifs.fail()) {
-            goto error_exit;
-        }
+            // Read the size of the chunk.
+            ifs.read(size, 4);
+            if (ifs.fail()) {
+                break;
+            }
 
-        // Allocate a memory block for the chunk.
-        uint32_t chunk_size = read_uint32(reinterpret_cast<uint8_t*>(size));
-        uint8_t* block = new uint8_t[chunk_size];
+            // Allocate a memory block for the chunk.
+            uint32_t chunk_size = read_uint32(reinterpret_cast<uint8_t*>(size));
+            uint8_t* block = new uint8_t[chunk_size];
 
-        // Read the memory image from the stream.
-        ifs.seekg(0, std::ios_base::beg);
-        if (ifs.fail()) {
-            goto error_exit;
-        }
-        ifs.read(reinterpret_cast<char*>(block), chunk_size);
-        if (ifs.fail()) {
-            goto error_exit;
-        }
+            // Read the memory image from the stream.
+            ifs.seekg(0, std::ios_base::beg);
+            if (ifs.fail()) {
+                break;
+            }
+            ifs.read(reinterpret_cast<char*>(block), chunk_size);
+            if (ifs.fail()) {
+                break;
+            }
 
-        return this->open(block, chunk_size, true);
+            return this->open(block, chunk_size, true);
 
-error_exit:
+        } while (0);
+
         ifs.seekg(offset, std::ios::beg);
         return 0;
     }
@@ -488,10 +509,10 @@ error_exit:
     {
         const uint8_t *p = reinterpret_cast<const uint8_t*>(buffer);
 
-	    // Make sure that the size of the chunk is larger than the minimum size.
-	    if (size < get_data_begin()) {
+        // Make sure that the size of the chunk is larger than the minimum size.
+        if (size < get_data_begin()) {
             throw cdbpp_exception("The memory image is smaller than a chunk header.");
-	    }
+        }
 
         // Check the chunk identifier.
         if (memcmp(p, "CDB+", 4) != 0) {
@@ -525,19 +546,19 @@ error_exit:
         m_n = 0;
         const tableref_t* ref = reinterpret_cast<const tableref_t*>(p);
         for (size_t i = 0;i < NUM_TABLES;++i) {
-		    if (ref[i].offset) {
-			    // Set the buckets.
+            if (ref[i].offset) {
+                // Set the buckets.
                 m_ht[i].buckets = reinterpret_cast<const bucket_t*>(m_buffer + ref[i].offset);
                 m_ht[i].num = ref[i].num;
-		    } else {
-			    // An empty hash table.
+            } else {
+                // An empty hash table.
                 m_ht[i].buckets = NULL;
                 m_ht[i].num = 0;
-		    }
+            }
 
-		    // The number of records is the half of the table size.
+            // The number of records is the half of the table size.
             m_n += (ref[i].num / 2);
-	    }
+        }
 
         return (size_t)csize;
     }
@@ -565,17 +586,17 @@ error_exit:
      */
     const void* get(const void *key, size_t ksize, size_t* vsize) const
     {
-	    uint32_t hv = superfasthash()(key, ksize);
-	    const hashtable_t* ht = &m_ht[hv % NUM_TABLES];
+        uint32_t hv = hash_function()(key, ksize);
+        const hashtable_t* ht = &m_ht[hv % NUM_TABLES];
 
-	    if (ht->num && ht->buckets != NULL) {
-		    int n = ht->num;
-		    int k = (hv >> 8) % n;
-		    const bucket_t* p = NULL;
+        if (ht->num && ht->buckets != NULL) {
+            int n = ht->num;
+            int k = (hv >> 8) % n;
+            const bucket_t* p = NULL;
 
-		    while (p = &ht->buckets[k], p->offset) {
-			    if (p->hash == hv) {
-				    const uint8_t *q = m_buffer + p->offset;
+            while (p = &ht->buckets[k], p->offset) {
+                if (p->hash == hv) {
+                    const uint8_t *q = m_buffer + p->offset;
                     if (read_uint32(q) == ksize &&
                         memcmp(key, q + sizeof(uint32_t), ksize) == 0) {
                         q += sizeof(uint32_t) + ksize;
@@ -584,10 +605,10 @@ error_exit:
                         }
                         return q + sizeof(uint32_t);
                     }
-			    }
-			    k = (k+1) % n;
-		    }
-	    }
+                }
+                k = (k+1) % n;
+            }
+        }
 
         if (vsize != NULL) {
             *vsize = 0;
@@ -601,6 +622,12 @@ protected:
         return *reinterpret_cast<const uint32_t*>(p);
     }
 };
+
+/// CDB++ builder with MurmurHash2.
+typedef builder_base<murmurhash2> builder;
+/// CDB++ reader with MurmurHash2.
+typedef cdbpp_base<murmurhash2> cdbpp;
+
 
 };
 
@@ -622,8 +649,8 @@ between keys and their values. The database provides several features:
   plus key/value size per record).
 - <b>Fast hash function.</b> CDB++ incorporates the fast and
   collision-resistant hash function for strings
-  (<a href="http://www.azillionmonkeys.com/qed/hash.html">SuperFastHash function</a>)
-  implemented by Paul Hsieh.
+  (<a href="http://murmurhash.googlepages.com/">MurmurHash 2.0</a>)
+  implemented by Austin Appleby.
 - <b>Chunk format.</b> The structure of CDB++ is designed to store the data in
   a chunk of a file; CDB++ database can be embedded into a file with other
   arbitrary data.
@@ -647,22 +674,32 @@ CDB++ does not support these for simplicity:
 
 @section sample Sample code
 This sample code constructs a database "test.cdb" with 100,000 string/integer
-associations, "000000"/0, "000001"/1, ..., "100000"/100000. Then the code
-issues string queries "000000", ..., "100000", and checks whether the values
-are correct.
+associations, "000000"/0, "000001"/1, ..., "100000"/100000 (in build function).
+Then the code issues string queries "000000", ..., "100000", and checks
+whether the values are correct (in read function).
 
 @include sample.cpp
 
 @section download Download
 
-- <a href="http://www.chokkan.org/software/dist/cdbpp-1.0.tar.gz">Source code</a>
+- <a href="http://www.chokkan.org/software/dist/cdbpp-1.1.tar.gz">Source code</a>
 
 CDB++ is distributed under the term of the
 <a href="http://www.opensource.org/licenses/bsd-license.php">modified BSD license</a>.
 
 @section changelog History
+- Version 1.1 (2009-07-14):
+    - Fixed a compile issue (a patch submitted by Takashi Imamichi).
+    - Replaced SuperFastHash with MurmurHash 2.0 (a patch submitted by
+      Takashi Imamichi).
+    - Classes cdbpp::builder_base and cdbpp::cdbpp_base taking a template
+      argument to configure a hash function. Classes cdbpp::builder and
+      cdbpp::cdbpp are now the synonyms of
+      \c cdbpp::builder_base<cdbpp::murmurhash2> and
+      \c cdbpp::cdbpp_base<cdbpp::murmurhash2>, respectively.
+    - Split the sample code into build and read functions.
 - Version 1.0 (2009-07-09):
-	- Initial release.
+    - Initial release.
 
 @section api Documentation
 
@@ -674,8 +711,8 @@ The data structure of the constant database was originally proposed by
 <a href="http://cr.yp.to/djb.html">Daniel J. Bernstein</a>.
 
 The source code of CDB++ includes the
-<a href="http://www.azillionmonkeys.com/qed/hash.html">SuperFastHash function</a>
-implemented by <a href="http://www.azillionmonkeys.com/qed/">Paul Hsieh</a>.
+<a href="http://murmurhash.googlepages.com/">MurmurHash 2.0</a>
+implemented by Austin Appleby.
 
 The CDB++ distribution contains "a portable stdint.h", which is released by
 <a href="http://www.azillionmonkeys.com/qed/">Paul Hsieh</a> under the term of
@@ -688,7 +725,7 @@ http://www.azillionmonkeys.com/qed/pstdint.h
 - <a href="http://www.corpit.ru/mjt/tinycdb.html">TinyCDB - a Constant DataBase</a> by Michael Tokarev.
 - <a href="http://cdbxx.sourceforge.net/">Constant Database C++ Bindings</a> by Stanislav Ievlev.
 - <a href="http://www.unixuser.org/~euske/doc/cdbinternals/index.html">Constant Database (cdb) Internals</a> by Yusuke Shinyama.
-- <a href="http://www.azillionmonkeys.com/qed/hash.html">SuperFastHash function</a> by Paul Hsieh.
+- <a href="http://murmurhash.googlepages.com/">MurmurHash 2.0</a> by Austin Appleby.
 
 */
 
