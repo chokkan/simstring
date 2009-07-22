@@ -174,6 +174,7 @@ int interactive(option& opt)
         std::string line;
         std::getline(is, line);
         if (is.eof()) {
+            os << std::endl;
             break;
         }
 
