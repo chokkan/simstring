@@ -151,12 +151,33 @@ int interactive(option& opt)
     ngram_generator_type gen(opt.ngram_size);
 
     for (;;) {
+        // Show a prompt.
+        switch (opt.query_type) {
+        case option::QT_EXACT:
+            os << "[exact]$ ";
+            break;
+        case option::QT_DICE:
+            os << "[dice>=" << opt.threshold << "]$ ";
+            break;
+        case option::QT_COSINE:
+            os << "[cosine>=" << opt.threshold << "]$ ";
+            break;
+        case option::QT_JACCARD:
+            os << "[jaccard>=" << opt.threshold << "]$ ";
+            break;
+        case option::QT_OVERLAP:
+            os << "[overlap>=" << opt.threshold << "]$ ";
+            break;
+        }
+
+        // Read a line.
         std::string line;
         std::getline(is, line);
         if (is.eof()) {
             break;
         }
 
+        // Check if the line indicates a command.
         if (line.compare(0, 16, ":set query exact") == 0) {
             opt.query_type = option::QT_EXACT;
 
@@ -176,12 +197,18 @@ int interactive(option& opt)
             opt.query_type = option::QT_OVERLAP;
             opt.threshold = std::atof(line.c_str() + 19);
 
-        } else if (line.compare(0, 5, ":help") == 0) {
+        } else if (line == ":help") {
             //usage_interactive(os);
 
-        } else {
-            strings_type xstrs;
+        } else if (line == ":quit") {
+            break;
 
+        } else {
+            // The line is a query.
+            strings_type xstrs;
+            clock_t clk = std::clock();
+
+            // Issue a query.
             switch (opt.query_type) {
             case option::QT_EXACT:
                 db.retrieve(
@@ -215,14 +242,15 @@ int interactive(option& opt)
                 break;
             }
 
-            os << "Retrieved " << xstrs.size() << std::endl;
+            // Output the retrieved strings.
             strings_type::const_iterator it;
             for (it = xstrs.begin();it != xstrs.end();++it) {
                 os << '\t' << *it << std::endl;
             }
-
+            os << xstrs.size() << " strings retrieved (" <<
+                (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
+                " sec)" << std::endl;
         }
-
     }
 
     return 0;
