@@ -154,19 +154,19 @@ int interactive(option& opt)
         // Show a prompt.
         switch (opt.query_type) {
         case option::QT_EXACT:
-            os << "[exact]$ ";
+            os << "[exact]> ";
             break;
         case option::QT_DICE:
-            os << "[dice>=" << opt.threshold << "]$ ";
+            os << "[dice>=" << opt.threshold << "]> ";
             break;
         case option::QT_COSINE:
-            os << "[cosine>=" << opt.threshold << "]$ ";
+            os << "[cosine>=" << opt.threshold << "]> ";
             break;
         case option::QT_JACCARD:
-            os << "[jaccard>=" << opt.threshold << "]$ ";
+            os << "[jaccard>=" << opt.threshold << "]> ";
             break;
         case option::QT_OVERLAP:
-            os << "[overlap>=" << opt.threshold << "]$ ";
+            os << "[overlap>=" << opt.threshold << "]> ";
             break;
         }
 
