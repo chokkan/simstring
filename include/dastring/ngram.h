@@ -50,7 +50,7 @@ generate_ngrams(
         for (int i = 2;i <= it->second;++i) {
             stringstream_type ss;
             ss << it->first << i;
-            *ins = it->first;
+            *ins = ss.str();
         }
     }
 }
