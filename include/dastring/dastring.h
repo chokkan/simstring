@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <map>
@@ -624,7 +625,7 @@ public:
     typedef ngramdb_reader_base<string_tmpl, uint32_t> base_type;
 
 protected:
-    memory_mapped_file m_strings;
+    std::vector<char_type> m_strings;
 
 public:
     /**
@@ -647,11 +648,20 @@ public:
         uint32_t num_entries, max_length;
 
         // Open the master file.
-        m_strings.open(name, std::ios::in);
+        std::ifstream ifs(name.c_str(), std::ios_base::in | std::ios_base::binary);
+        if (ifs.fail()) {
+            return false;
+        }
+        ifs.seekg(0, std::ios_base::end);
+        size_t size = (size_t)ifs.tellg();
+        ifs.seekg(0, std::ios_base::beg);
+        
+        m_strings.resize(size);
+        ifs.read(&m_strings[0], size);
+        ifs.close();
 
         // Check the file header.
-        const char* p = m_strings.const_data();
-        size_t size = m_strings.size();
+        const char* p = &m_strings[0];
         if (size < 12 || std::strncmp(p, "SSDB", 4) != 0) {
             return false;
         }
@@ -694,7 +704,7 @@ public:
         typename base_type::results_type results;
         base_type::search(query, results);
         typename base_type::results_type::const_iterator it;
-        const char* strings = m_strings.const_data();
+        const char* strings = &m_strings[0];
         for (it = results.begin();it != results.end();++it) {
             ngrams_type xgrams;
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
