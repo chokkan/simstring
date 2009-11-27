@@ -205,6 +205,7 @@ int interactive(option& opt)
             break;
 
         } else {
+#if 0
             // The line is a query.
             strings_type xstrs;
             clock_t clk = std::clock();
@@ -251,6 +252,53 @@ int interactive(option& opt)
             os << xstrs.size() << " strings retrieved (" <<
                 (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
                 " sec)" << std::endl;
+#else
+            // The line is a query.
+            std::vector<reader_type::record_type> records;
+            clock_t clk = std::clock();
+
+            // Issue a query.
+            switch (opt.query_type) {
+            case option::QT_EXACT:
+                db.retrieve_similarity(
+                    query_exact_type(gen, line), records
+                    );
+                break;
+            case option::QT_DICE:
+                db.retrieve_similarity(
+                    query_dice_type(gen, line, opt.threshold),
+                    records
+                    );
+                break;
+            case option::QT_COSINE:
+                db.retrieve_similarity(
+                    query_cosine_type(gen, line, opt.threshold),
+                    records
+                    );
+                break;
+            case option::QT_JACCARD:
+                db.retrieve_similarity(
+                    query_jaccard_type(gen, line, opt.threshold),
+                    records
+                    );
+                break;
+            case option::QT_OVERLAP:
+                db.retrieve_similarity(
+                    query_overlap_type(gen, line, opt.threshold),
+                    records
+                    );
+                break;
+            }
+
+            // Output the retrieved strings.
+            std::vector<reader_type::record_type>::const_iterator it;
+            for (it = records.begin();it != records.end();++it) {
+                os << '\t' << it->sim << '\t' << it->str << std::endl;
+            }
+            os << records.size() << " strings retrieved (" <<
+                (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
+                " sec)" << std::endl;
+#endif
         }
     }
 

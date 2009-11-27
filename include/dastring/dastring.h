@@ -416,6 +416,24 @@ public:
     typedef std::set<value_type> results_type;
     //typedef std::map<value_type, int> candidates_type;
     typedef cdbpp::cdbpp index_type;
+
+    struct result_similarity_type
+    {
+        value_type value;
+        double sim;
+
+        result_similarity_type()
+            : value(0), sim(0)
+        {
+        }
+
+        result_similarity_type(value_type v, double s)
+            : value(v), sim(s)
+        {
+        }
+    };
+
+    typedef std::vector<result_similarity_type> results_similarity_type;
     
 protected:
     struct posting_type
@@ -592,6 +610,119 @@ public:
         }
     }
 
+    template <class query_type>
+    void search_similarity(const query_type& query, results_similarity_type& results)
+    {
+        int i;
+        const int qlen = query.length();
+
+        // Allocate a vector of postings corresponding to n-gram queries.
+        postings_type posts(qlen);
+
+        // Compute the range of n-gram lengths for the candidate strings;
+        // in other words, we do not have to search for strings whose n-gram
+        // lengths are out of this range.
+        const int xmin = std::max(query.min_length(), 1);
+        const int xmax = std::min(query.max_length(), m_max_length);
+
+        // Loop for each length in the range.
+        for (int xlen = xmin;xlen <= xmax;++xlen) {
+            // Access to the n-gram index for the length.
+            index_type& index = open_index(m_name, xlen);
+            if (!index.is_open()) {
+                // Ignore an empty index.
+                continue;
+            }
+
+            // Search for string entries that match to each query n-gram.
+            // Note that we do not traverse each entry here, but only obtain
+            // the number of and the pointer to the entries.
+            typename query_type::const_iterator it;
+            for (it = query.begin(), i = 0;it != query.end();++it, ++i) {
+                size_t vsize;
+                const void *values = index.get(
+                    it->c_str(),
+                    sizeof(char_type) * it->length(),
+                    &vsize
+                    );
+                posts[i].num = (int)(vsize / sizeof(value_type));
+                posts[i].values = reinterpret_cast<const value_type*>(values);
+            }
+
+            // Sort the query n-grams by ascending order of their frequencies.
+            // This reduces the number of initial candidates.
+            std::sort(posts.begin(), posts.end());
+
+            // The minimum number of n-gram matches required for the query.
+            const int mmin = query.min_match(xlen);
+            // A candidate must match to one of n-grams in these queries.
+            const int min_queries = qlen - mmin + 1;
+
+            // Collect candidates that match to the initial queries.
+            candidates_type cands;
+            for (i = 0;i < min_queries;++i) {
+                candidates_type tmp;
+                typename candidates_type::const_iterator itc = cands.begin();
+                const value_type* p = posts[i].values;
+                const value_type* last = posts[i].values + posts[i].num;
+
+                while (itc != cands.end() || p != last) {
+                    if (itc == cands.end() || (p != last && itc->value > *p)) {
+                        tmp.push_back(candidate_type(*p, 1));
+                        ++p;
+                    } else if (p == last || (itc != cands.end() && itc->value < *p)) {
+                        tmp.push_back(candidate_type(itc->value, itc->num));
+                        ++itc;
+                    } else {
+                        tmp.push_back(candidate_type(itc->value, itc->num+1));
+                        ++itc;
+                        ++p;
+                    }
+                }
+                std::swap(cands, tmp);
+            }
+
+            // No initial candidate is found.
+            if (cands.empty()) {
+                continue;
+            }
+
+            // Count the number of matches with remaining queries.
+            for (;i < qlen;++i) {
+                candidates_type tmp;
+                typename candidates_type::const_iterator itc;
+                const value_type* first = posts[i].values;
+                const value_type* last = posts[i].values + posts[i].num;
+
+                // For each active candidate.
+                for (itc = cands.begin();itc != cands.end();++itc) {
+                    int num = itc->num;
+                    if (std::binary_search(first, last, itc->value)) {
+                        ++num;
+                    }
+
+                    if (num + (qlen - i - 1) >= mmin) {
+                        // This candidate still has the chance.
+                        tmp.push_back(candidate_type(itc->value, num));
+                    }
+                }
+                std::swap(cands, tmp);
+
+                // Exit the loop if all candidates are pruned.
+                if (cands.empty()) {
+                    break;
+                }
+            }
+
+            double norm = std::sqrt((double)xlen * qlen);
+            for (typename candidates_type::const_iterator itc = cands.begin();itc != cands.end();++itc) {
+                if (mmin <= itc->num) {
+                    results.push_back(result_similarity_type(itc->value, itc->num / norm));
+                }
+            }
+        }
+    }
+
 protected:
     index_type& open_index(const std::string& base, int length)
     {
@@ -623,6 +754,15 @@ public:
     typedef std::vector<string_type> ngrams_type;
     /// 
     typedef ngramdb_reader_base<string_tmpl, uint32_t> base_type;
+
+    struct record_type
+    {
+        std::string str;
+        double sim;
+
+        record_type() : sim(0) {}
+        record_type(const std::string& _str, double _sim) : str(_str), sim(_sim) {}
+    };
 
 protected:
     std::vector<char_type> m_strings;
@@ -709,6 +849,20 @@ public:
             ngrams_type xgrams;
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
             *ins = xstr;
+        }
+    }
+
+    template <class query_type, class container_type>
+    void retrieve_similarity(const query_type& query, container_type& cont)
+    {
+        typename base_type::results_similarity_type results;
+        base_type::search_similarity(query, results);
+        typename base_type::results_similarity_type::const_iterator it;
+        const char* strings = &m_strings[0];
+        for (it = results.begin();it != results.end();++it) {
+            ngrams_type xgrams;
+            const char_type* xstr = reinterpret_cast<const char_type*>(strings + it->value);
+            cont.push_back(record_type(xstr, it->sim));
         }
     }
 
