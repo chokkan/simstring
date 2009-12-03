@@ -6,7 +6,7 @@
 #include <vector>
 #include <limits.h>
 
-namespace dastring { namespace query {
+namespace simstring { namespace query {
 
 
 

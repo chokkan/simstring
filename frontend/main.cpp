@@ -4,20 +4,20 @@
 #include <iterator>
 #include <string>
 #include <vector>
-#include <dastring/dastring.h>
+#include <simstring/simstring.h>
 
 #include "optparse.h"
 
 typedef std::string string_type;
 typedef std::vector<string_type> strings_type;
-typedef dastring::ngram_generator ngram_generator_type;
-typedef dastring::writer_base<string_type, ngram_generator_type> writer_type;
-typedef dastring::reader_base<string_type> reader_type;
-typedef dastring::query::exact<string_type, ngram_generator_type> query_exact_type;
-typedef dastring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
-typedef dastring::query::dice<string_type, ngram_generator_type> query_dice_type;
-typedef dastring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
-typedef dastring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
+typedef simstring::ngram_generator ngram_generator_type;
+typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
+typedef simstring::reader_base<string_type> reader_type;
+typedef simstring::query::exact<string_type, ngram_generator_type> query_exact_type;
+typedef simstring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
+typedef simstring::query::dice<string_type, ngram_generator_type> query_dice_type;
+typedef simstring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
+typedef simstring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
 
 class option : public optparse
 {
@@ -265,9 +265,9 @@ int main(int argc, char *argv[])
     std::ostream& es = std::cerr;
 
     // Show the copyright information.
-    os << DASTRING_NAME " ";
-    os << DASTRING_MAJOR_VERSION << "." << DASTRING_MINOR_VERSION << " ";
-    os << DASTRING_COPYRIGHT << std::endl;
+    os << SIMSTRING_NAME " ";
+    os << SIMSTRING_MAJOR_VERSION << "." << SIMSTRING_MINOR_VERSION << " ";
+    os << SIMSTRING_COPYRIGHT << std::endl;
     os << std::endl;
 
     // Parse the command-line options.

@@ -5,7 +5,7 @@
 #include <sstream>
 #include <string>
 
-namespace dastring
+namespace simstring
 {
 
 template <
