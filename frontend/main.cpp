@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iterator>
 #include <locale>
+#include <locale.h>
 #include <string>
 #include <vector>
 #include <simstring/simstring.h>
@@ -45,7 +46,7 @@ public:
         code(CC_CHAR),
         name(""),
         ngram_size(3),
-        query_type(QT_EXACT),
+        query_type(QT_COSINE),
         threshold(0.7)
     {
     }
@@ -62,12 +63,8 @@ class option_parser :
         ON_OPTION_WITH_ARG(SHORTOPT('d') || LONGOPT("database"))
             name = arg;
 
-        ON_OPTION_WITH_ARG(SHORTOPT('c') || LONGOPT("chartype"))
-            if (std::strcmp(arg, "wchar") == 0) {
-                code = CC_WCHAR;
-            } else {
-                throw invalid_value(std::string("unknown character type: ") + arg);
-            }
+        ON_OPTION(SHORTOPT('w') || LONGOPT("wchar"))
+            code = CC_WCHAR;
 
         ON_OPTION_WITH_ARG(SHORTOPT('s') || LONGOPT("similarity"))
             if (std::strcmp(arg, "exact") == 0) {
@@ -101,9 +98,10 @@ int usage(std::ostream& os, const char *argv0)
     return 0;
 }
 
-template <class string_type, class istream_type>
+template <class char_type, class istream_type>
 int build(option& opt, istream_type& is)
 {
+    typedef std::basic_string<char_type> string_type;
     typedef simstring::ngram_generator ngram_generator_type;
     typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
     
@@ -116,6 +114,7 @@ int build(option& opt, istream_type& is)
     os << "Constructing the database" << std::endl;
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
+    os << "Char type: " << typeid(char_type).name() << std::endl;
     os.flush();
 
     // Open the database for construction.
@@ -169,9 +168,10 @@ int build(option& opt, istream_type& is)
     return 0;
 }
 
-template <class string_type, class istream_type, class ostream_type>
+template <class char_type, class istream_type, class ostream_type>
 int interactive(option& opt, istream_type& is, ostream_type& os)
 {
+    typedef std::basic_string<char_type> string_type;
     typedef std::vector<string_type> strings_type;
     typedef simstring::ngram_generator ngram_generator_type;
     typedef simstring::reader_base<string_type> reader_type;
@@ -240,6 +240,7 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
         for (it = xstrs.begin();it != xstrs.end();++it) {
             os << os.widen('\t') << *it << std::endl;
         }
+        os.flush();
 
         es << xstrs.size() << " strings retrieved (" <<
             (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
@@ -273,25 +274,31 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // Change the locale of wcin and wcout if necessary.
+    if (opt.code == option::CC_WCHAR) {
+        std::wcout.imbue(std::locale(""));
+        std::wcin.imbue(std::locale(""));
+    }
+
     // Branches for the processing mode.
     switch (opt.mode) {
     case option::MODE_HELP:
         return usage(os, argv[0]);
     case option::MODE_BUILD:
         if (opt.code == option::CC_CHAR) {
-            return build<std::string>(opt, std::cin);
+            return build<char>(opt, std::cin);
         } else if (opt.code == option::CC_WCHAR) {
-            return build<std::wstring>(opt, std::wcin);
+            return build<wchar_t>(opt, std::wcin);
         }
         break;
     case option::MODE_INTERACTIVE:
         if (opt.code == option::CC_CHAR) {
-            return interactive<std::string>(opt, std::cin, std::cout);
+            return interactive<char>(opt, std::cin, std::cout);
         } else if (opt.code == option::CC_WCHAR) {
-            return interactive<std::wstring>(opt, std::wcin, std::wcout);
+            return interactive<wchar_t>(opt, std::wcin, std::wcout);
         }
         break;
-    default:
-        return 1;
     }
+
+    return 1;
 }

@@ -660,7 +660,7 @@ public:
     typedef ngramdb_reader_base<string_tmpl, uint32_t> base_type;
 
 protected:
-    std::vector<char_type> m_strings;
+    std::vector<char> m_strings;
 
 public:
     /**
@@ -688,15 +688,15 @@ public:
             return false;
         }
         ifs.seekg(0, std::ios_base::end);
-        size_t size = (size_t)ifs.tellg() / sizeof(char_type);
+        size_t size = (size_t)ifs.tellg();
         ifs.seekg(0, std::ios_base::beg);
         
         m_strings.resize(size);
-        ifs.read(reinterpret_cast<char*>(&m_strings[0]), size);
+        ifs.read(&m_strings[0], size);
         ifs.close();
 
         // Check the file header.
-        const char* p = reinterpret_cast<const char*>(&m_strings[0]);
+        const char* p = &m_strings[0];
         if (size < 12 || std::strncmp(p, "SSDB", 4) != 0) {
             return false;
         }
@@ -739,7 +739,7 @@ public:
         typename base_type::results_type results;
         base_type::search(query, results);
         typename base_type::results_type::const_iterator it;
-        const char_type* strings = &m_strings[0];
+        const char* strings = &m_strings[0];
         for (it = results.begin();it != results.end();++it) {
             ngrams_type xgrams;
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
