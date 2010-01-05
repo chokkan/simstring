@@ -276,6 +276,8 @@ int main(int argc, char *argv[])
 
     // Change the locale of wcin and wcout if necessary.
     if (opt.code == option::CC_WCHAR) {
+        std::ios_base::sync_with_stdio(false);
+        std::locale::global(std::locale("")); 
         std::wcout.imbue(std::locale(""));
         std::wcin.imbue(std::locale(""));
     }
