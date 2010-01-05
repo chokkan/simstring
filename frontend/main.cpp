@@ -236,7 +236,7 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
         }
 
         // Output the retrieved strings.
-        strings_type::const_iterator it;
+        typename strings_type::const_iterator it;
         for (it = xstrs.begin();it != xstrs.end();++it) {
             os << os.widen('\t') << *it << std::endl;
         }
