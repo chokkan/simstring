@@ -2,24 +2,14 @@
 #include <ctime>
 #include <iostream>
 #include <iterator>
+#include <locale>
 #include <string>
 #include <vector>
 #include <simstring/simstring.h>
 
 #include "optparse.h"
 
-typedef std::string string_type;
-typedef std::vector<string_type> strings_type;
-typedef simstring::ngram_generator ngram_generator_type;
-typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
-typedef simstring::reader_base<string_type> reader_type;
-typedef simstring::query::exact<string_type, ngram_generator_type> query_exact_type;
-typedef simstring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
-typedef simstring::query::dice<string_type, ngram_generator_type> query_dice_type;
-typedef simstring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
-typedef simstring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
-
-class option : public optparse
+class option
 {
 public:
     enum {
@@ -36,7 +26,13 @@ public:
         QT_OVERLAP,
     };
 
+    enum {
+        CC_CHAR = 0,    // char
+        CC_WCHAR,       // wchar_t
+    };
+
     int mode;
+    int code;
     std::string name;
 
     int ngram_size;
@@ -46,19 +42,48 @@ public:
 public:
     option() :
         mode(MODE_INTERACTIVE),
+        code(CC_CHAR),
         name(""),
         ngram_size(3),
         query_type(QT_EXACT),
-        threshold(1.)
+        threshold(0.7)
     {
     }
+};
 
+class option_parser :
+    public option,
+    public optparse
+{
     BEGIN_OPTION_MAP_INLINE()
         ON_OPTION(SHORTOPT('b') || LONGOPT("build"))
             mode = MODE_BUILD;
 
         ON_OPTION_WITH_ARG(SHORTOPT('d') || LONGOPT("database"))
             name = arg;
+
+        ON_OPTION_WITH_ARG(SHORTOPT('c') || LONGOPT("chartype"))
+            if (std::strcmp(arg, "wchar") == 0) {
+                code = CC_WCHAR;
+            } else {
+                throw invalid_value(std::string("unknown character type: ") + arg);
+            }
+
+        ON_OPTION_WITH_ARG(SHORTOPT('s') || LONGOPT("similarity"))
+            if (std::strcmp(arg, "exact") == 0) {
+                query_type = QT_EXACT;
+            } else if (std::strcmp(arg, "dice") == 0) {
+                query_type = QT_DICE;
+            } else if (std::strcmp(arg, "cosine") == 0) {
+                query_type = QT_COSINE;
+            } else if (std::strcmp(arg, "jaccard") == 0) {
+                query_type = QT_JACCARD;
+            } else if (std::strcmp(arg, "overlap") == 0) {
+                query_type = QT_OVERLAP;
+            }
+
+        ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("threshold"))
+            threshold = std::atof(arg);
 
         ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
             ngram_size = std::atoi(arg);
@@ -76,11 +101,14 @@ int usage(std::ostream& os, const char *argv0)
     return 0;
 }
 
-int build(option& opt)
+template <class string_type, class istream_type>
+int build(option& opt, istream_type& is)
 {
+    typedef simstring::ngram_generator ngram_generator_type;
+    typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
+    
     int n = 0;
     clock_t clk;
-    std::istream& is = std::cin;
     std::ostream& os = std::cout;
     std::ostream& es = std::cerr;
 
@@ -101,12 +129,14 @@ int build(option& opt)
 
     // Insert every string from STDIN into the database.
     for (;;) {
-        std::string line;
+        // Read a line.
+        string_type line;
         std::getline(is, line);
         if (is.eof()) {
             break;
         }
 
+        // Insert the string.
         if (!db.insert(line)) {
             es << "ERROR: " << db.error() << std::endl;
             return 1;
@@ -139,11 +169,19 @@ int build(option& opt)
     return 0;
 }
 
-int interactive(option& opt)
+template <class string_type, class istream_type, class ostream_type>
+int interactive(option& opt, istream_type& is, ostream_type& os)
 {
+    typedef std::vector<string_type> strings_type;
+    typedef simstring::ngram_generator ngram_generator_type;
+    typedef simstring::reader_base<string_type> reader_type;
+    typedef simstring::query::exact<string_type, ngram_generator_type> query_exact_type;
+    typedef simstring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
+    typedef simstring::query::dice<string_type, ngram_generator_type> query_dice_type;
+    typedef simstring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
+    typedef simstring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
+
     reader_type db;
-    std::istream& is = std::cin;
-    std::ostream& os = std::cout;
     std::ostream& es = std::cerr;
 
     db.open(opt.name);
@@ -151,107 +189,61 @@ int interactive(option& opt)
     ngram_generator_type gen(opt.ngram_size);
 
     for (;;) {
-        // Show a prompt.
-        switch (opt.query_type) {
-        case option::QT_EXACT:
-            os << "[exact]> ";
-            break;
-        case option::QT_DICE:
-            os << "[dice>=" << opt.threshold << "]> ";
-            break;
-        case option::QT_COSINE:
-            os << "[cosine>=" << opt.threshold << "]> ";
-            break;
-        case option::QT_JACCARD:
-            os << "[jaccard>=" << opt.threshold << "]> ";
-            break;
-        case option::QT_OVERLAP:
-            os << "[overlap>=" << opt.threshold << "]> ";
-            break;
-        }
-
         // Read a line.
-        std::string line;
+        string_type line;
         std::getline(is, line);
         if (is.eof()) {
             os << std::endl;
             break;
         }
 
-        // Check if the line indicates a command.
-        if (line.compare(0, 16, ":set query exact") == 0) {
-            opt.query_type = option::QT_EXACT;
+        // The line is a query.
+        strings_type xstrs;
+        clock_t clk = std::clock();
 
-        } else if (line.compare(0, 16, ":set query dice ") == 0) {
-            opt.query_type = option::QT_DICE;
-            opt.threshold = std::atof(line.c_str() + 16);
-
-        } else if (line.compare(0, 18, ":set query cosine ") == 0) {
-            opt.query_type = option::QT_COSINE;
-            opt.threshold = std::atof(line.c_str() + 18);
-
-        } else if (line.compare(0, 19, ":set query jaccard ") == 0) {
-            opt.query_type = option::QT_JACCARD;
-            opt.threshold = std::atof(line.c_str() + 19);
-
-        } else if (line.compare(0, 19, ":set query overlap ") == 0) {
-            opt.query_type = option::QT_OVERLAP;
-            opt.threshold = std::atof(line.c_str() + 19);
-
-        } else if (line == ":help") {
-            //usage_interactive(os);
-
-        } else if (line == ":quit") {
+        // Issue a query.
+        switch (opt.query_type) {
+        case option::QT_EXACT:
+            db.retrieve(
+                query_exact_type(gen, line),
+                std::back_inserter(xstrs)
+                );
             break;
-
-        } else {
-            // The line is a query.
-            strings_type xstrs;
-            clock_t clk = std::clock();
-
-            // Issue a query.
-            switch (opt.query_type) {
-            case option::QT_EXACT:
-                db.retrieve(
-                    query_exact_type(gen, line),
-                    std::back_inserter(xstrs)
-                    );
-                break;
-            case option::QT_DICE:
-                db.retrieve(
-                    query_dice_type(gen, line, opt.threshold),
-                    std::back_inserter(xstrs)
-                    );
-                break;
-            case option::QT_COSINE:
-                db.retrieve(
-                    query_cosine_type(gen, line, opt.threshold),
-                    std::back_inserter(xstrs)
-                    );
-                break;
-            case option::QT_JACCARD:
-                db.retrieve(
-                    query_jaccard_type(gen, line, opt.threshold),
-                    std::back_inserter(xstrs)
-                    );
-                break;
-            case option::QT_OVERLAP:
-                db.retrieve(
-                    query_overlap_type(gen, line, opt.threshold),
-                    std::back_inserter(xstrs)
-                    );
-                break;
-            }
-
-            // Output the retrieved strings.
-            strings_type::const_iterator it;
-            for (it = xstrs.begin();it != xstrs.end();++it) {
-                os << '\t' << *it << std::endl;
-            }
-            os << xstrs.size() << " strings retrieved (" <<
-                (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
-                " sec)" << std::endl;
+        case option::QT_DICE:
+            db.retrieve(
+                query_dice_type(gen, line, opt.threshold),
+                std::back_inserter(xstrs)
+                );
+            break;
+        case option::QT_COSINE:
+            db.retrieve(
+                query_cosine_type(gen, line, opt.threshold),
+                std::back_inserter(xstrs)
+                );
+            break;
+        case option::QT_JACCARD:
+            db.retrieve(
+                query_jaccard_type(gen, line, opt.threshold),
+                std::back_inserter(xstrs)
+                );
+            break;
+        case option::QT_OVERLAP:
+            db.retrieve(
+                query_overlap_type(gen, line, opt.threshold),
+                std::back_inserter(xstrs)
+                );
+            break;
         }
+
+        // Output the retrieved strings.
+        strings_type::const_iterator it;
+        for (it = xstrs.begin();it != xstrs.end();++it) {
+            os << os.widen('\t') << *it << std::endl;
+        }
+
+        es << xstrs.size() << " strings retrieved (" <<
+            (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
+            " sec)" << std::endl;
     }
 
     return 0;
@@ -259,7 +251,7 @@ int interactive(option& opt)
 
 int main(int argc, char *argv[])
 {
-    option opt;
+    option_parser opt;
     std::istream& is = std::cin;
     std::ostream& os = std::cout;
     std::ostream& es = std::cerr;
@@ -286,9 +278,19 @@ int main(int argc, char *argv[])
     case option::MODE_HELP:
         return usage(os, argv[0]);
     case option::MODE_BUILD:
-        return build(opt);
+        if (opt.code == option::CC_CHAR) {
+            return build<std::string>(opt, std::cin);
+        } else if (opt.code == option::CC_WCHAR) {
+            return build<std::wstring>(opt, std::wcin);
+        }
+        break;
     case option::MODE_INTERACTIVE:
-        return interactive(opt);
+        if (opt.code == option::CC_CHAR) {
+            return interactive<std::string>(opt, std::cin, std::cout);
+        } else if (opt.code == option::CC_WCHAR) {
+            return interactive<std::wstring>(opt, std::wcin, std::wcout);
+        }
+        break;
     default:
         return 1;
     }

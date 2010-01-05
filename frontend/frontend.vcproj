@@ -176,6 +176,10 @@
 				RelativePath=".\main.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\optparse.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="ヘッダー ファイル"
@@ -183,31 +187,27 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\include\dastring\cdbpp.h"
+				RelativePath="..\include\simstring\cdbpp.h"
 				>
 			</File>
 			<File
-				RelativePath="..\include\dastring\dastring.h"
+				RelativePath="..\include\simstring\memory_mapped_file.h"
 				>
 			</File>
 			<File
-				RelativePath="..\include\dastring\memory_mapped_file.h"
+				RelativePath="..\include\simstring\memory_mapped_file_win32.h"
 				>
 			</File>
 			<File
-				RelativePath="..\include\dastring\memory_mapped_file_posix.h"
+				RelativePath="..\include\simstring\ngram.h"
 				>
 			</File>
 			<File
-				RelativePath="..\include\dastring\memory_mapped_file_win32.h"
+				RelativePath="..\include\simstring\query.h"
 				>
 			</File>
 			<File
-				RelativePath="..\include\dastring\ngram.h"
-				>
-			</File>
-			<File
-				RelativePath="..\include\dastring\query.h"
+				RelativePath="..\include\simstring\simstring.h"
 				>
 			</File>
 		</Filter>

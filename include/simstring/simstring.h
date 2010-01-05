@@ -1,5 +1,5 @@
 /*
- *      SimString header.
+ *      SimString.
  *
  * Copyright (c) 2009, Naoaki Okazaki
  * All rights reserved.
@@ -228,7 +228,7 @@ public:
     }
 
 protected:
-    bool store(const string_type& name, const index_type& index)
+    bool store(const std::string& name, const index_type& index)
     {
         // Open the database file with binary mode.
         std::ofstream ofs(name.c_str(), std::ios::binary);
@@ -386,7 +386,7 @@ public:
         value_type off = (value_type)(std::streamoff)m_ofs.tellp();
 
         // Write the key string to the master file.
-        m_ofs.write(key.c_str(), sizeof(char_type) * (key.length()+1));
+        m_ofs.write(reinterpret_cast<const char*>(key.c_str()), sizeof(char_type) * (key.length()+1));
         if (m_ofs.fail()) {
             this->m_error << "Failed to write a string to the master file.";
             return false;
@@ -688,15 +688,15 @@ public:
             return false;
         }
         ifs.seekg(0, std::ios_base::end);
-        size_t size = (size_t)ifs.tellg();
+        size_t size = (size_t)ifs.tellg() / sizeof(char_type);
         ifs.seekg(0, std::ios_base::beg);
         
         m_strings.resize(size);
-        ifs.read(&m_strings[0], size);
+        ifs.read(reinterpret_cast<char*>(&m_strings[0]), size);
         ifs.close();
 
         // Check the file header.
-        const char* p = &m_strings[0];
+        const char* p = reinterpret_cast<const char*>(&m_strings[0]);
         if (size < 12 || std::strncmp(p, "SSDB", 4) != 0) {
             return false;
         }
@@ -739,7 +739,7 @@ public:
         typename base_type::results_type results;
         base_type::search(query, results);
         typename base_type::results_type::const_iterator it;
-        const char* strings = &m_strings[0];
+        const char_type* strings = &m_strings[0];
         for (it = results.begin();it != results.end();++it) {
             ngrams_type xgrams;
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
