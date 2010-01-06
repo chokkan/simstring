@@ -1,4 +1,5 @@
 #include <string>
+#include <stdexcept>
 #include <vector>
 #include <simstring/simstring.h>
 
@@ -15,28 +16,50 @@ writer::writer(const char *filename, int n)
     ngram_generator_type *gen = new ngram_generator_type(n);
     writer_type *dbw = new writer_type(*gen, filename);
 
+    if (dbw->fail()) {
+        std::string message = dbw->error();
+        delete dbw;
+        delete gen;
+        throw std::invalid_argument(message);
+    }
+
     m_dbw = dbw;
     m_gen = gen;
 }
 
 writer::~writer()
 {
-    this->close();
+    writer_type* dbw = reinterpret_cast<writer_type*>(m_dbw);
+    ngram_generator_type* gen = reinterpret_cast<ngram_generator_type*>(m_gen);
 
-    delete reinterpret_cast<writer_type*>(m_dbw);
-    delete reinterpret_cast<ngram_generator_type*>(m_gen);
+    dbw->close();
+    if (dbw->fail()) {
+        std::string message = dbw->error();
+        delete dbw;
+        delete gen;
+        throw std::runtime_error(message);
+    }
+
+    delete dbw;
+    delete gen;
 }
 
 void writer::insert(const char *string)
 {
-    writer_type& dbw = *reinterpret_cast<writer_type*>(m_dbw);
-    dbw.insert(string);
+    writer_type* dbw = reinterpret_cast<writer_type*>(m_dbw);
+    dbw->insert(string);
+    if (dbw->fail()) {
+        throw std::runtime_error(dbw->error());
+    }
 }
 
 void writer::close()
 {
-    writer_type& dbw = *reinterpret_cast<writer_type*>(m_dbw);
-    dbw.close();
+    writer_type* dbw = reinterpret_cast<writer_type*>(m_dbw);
+    dbw->close();
+    if (dbw->fail()) {
+        throw std::runtime_error(dbw->error());
+    }
 }
 
 reader::reader(const char *filename, int n)
@@ -44,7 +67,11 @@ reader::reader(const char *filename, int n)
     ngram_generator_type *gen = new ngram_generator_type(n);
     reader_type *dbr = new reader_type;
 
-    dbr->open(filename);
+    if (!dbr->open(filename)) {
+        delete dbr;
+        delete gen;
+        throw std::invalid_argument("Failed to open the database");
+    }
 
     m_dbr = dbr;
     m_gen = gen;
@@ -53,7 +80,6 @@ reader::reader(const char *filename, int n)
 reader::~reader()
 {
     this->close();
-
     delete reinterpret_cast<reader_type*>(m_dbr);
     delete reinterpret_cast<ngram_generator_type*>(m_gen);
 }
@@ -111,3 +137,4 @@ void reader::close()
     reader_type& dbr = *reinterpret_cast<reader_type*>(m_dbr);
     dbr.close();
 }
+
