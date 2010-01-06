@@ -7,12 +7,13 @@
 typedef std::string string_type;
 typedef simstring::ngram_generator ngram_generator_type;
 typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
+typedef simstring::reader_base<string_type> reader_type;
 
 writer::writer(const char *filename, int n)
     : m_dbw(NULL), m_gen(NULL)
 {
-    gen = new ngram_generator_type(n);
-    dbw = new writer_type(*gen, filename);
+    ngram_generator_type *gen = new ngram_generator_type(n);
+    writer_type *dbw = new writer_type(*gen, filename);
 
     m_dbw = dbw;
     m_gen = gen;
@@ -40,8 +41,8 @@ void writer::close()
 
 reader::reader(const char *filename, int n)
 {
-    gen = new ngram_generator_type(n);
-    dbr = new reader_type(*gen, filename);
+    ngram_generator_type *gen = new ngram_generator_type(n);
+    reader_type *dbr = new reader_type;
 
     dbr->open(filename);
 
