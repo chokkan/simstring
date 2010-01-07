@@ -562,7 +562,7 @@ public:
             // A candidate must match to one of n-grams in these queries.
             const int min_queries = qlen - mmin + 1;
 
-            // Collect candidates that match to the initial queries.
+            // Step 1: collect candidates that match to the initial queries.
             candidates_type cands;
             for (i = 0;i < min_queries;++i) {
                 candidates_type tmp;
@@ -591,7 +591,7 @@ public:
                 continue;
             }
 
-            // Count the number of matches with remaining queries.
+            // Step 2: count the number of matches with remaining queries.
             for (;i < qlen;++i) {
                 candidates_type tmp;
                 typename candidates_type::const_iterator itc;
@@ -622,7 +622,13 @@ public:
             }
 
             if (!cands.empty()) {
-                throw std::logic_error("error in candidate pruning");
+                // Step 2 was not performed.
+                typename candidates_type::const_iterator itc;
+                for (itc = cands.begin();itc != cands.end();++itc) {
+                    if (mmin <= itc->num) {
+                        results.insert(itc->value);
+                    }
+                }
             }
         }
     }

@@ -37,6 +37,7 @@ public:
     std::string name;
 
     int ngram_size;
+    bool be;
     int query_type;
     double threshold;
     
@@ -46,6 +47,7 @@ public:
         code(CC_CHAR),
         name(""),
         ngram_size(3),
+        be(false),
         query_type(QT_COSINE),
         threshold(0.7)
     {
@@ -65,6 +67,9 @@ class option_parser :
 
         ON_OPTION(SHORTOPT('w') || LONGOPT("wchar"))
             code = CC_WCHAR;
+
+        ON_OPTION(SHORTOPT('m') || LONGOPT("mark"))
+            be = true;
 
         ON_OPTION_WITH_ARG(SHORTOPT('s') || LONGOPT("similarity"))
             if (std::strcmp(arg, "exact") == 0) {
@@ -119,7 +124,7 @@ int build(option& opt, istream_type& is)
 
     // Open the database for construction.
     clk = std::clock();
-    ngram_generator_type gen(opt.ngram_size);
+    ngram_generator_type gen(opt.ngram_size, opt.be);
     writer_type db(gen, opt.name);
     if (db.fail()) {
         es << "ERROR: " << db.error() << std::endl;
@@ -186,7 +191,7 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
 
     db.open(opt.name);
 
-    ngram_generator_type gen(opt.ngram_size);
+    ngram_generator_type gen(opt.ngram_size, opt.be);
 
     for (;;) {
         // Read a line.
