@@ -1,5 +1,5 @@
-#ifndef __SWIG_H__
-#define __SWIG_H__
+#ifndef __EXPORT_H__
+#define __EXPORT_H__
 
 #include <string>
 #include <vector>
@@ -40,5 +40,5 @@ public:
     double threshold;
 };
 
-#endif/*__SWIG_H__*/
+#endif/*__EXPORT_H__*/
 

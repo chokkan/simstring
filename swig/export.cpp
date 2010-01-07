@@ -63,6 +63,7 @@ void writer::close()
 }
 
 reader::reader(const char *filename, int n)
+	: m_dbr(NULL), m_gen(NULL), measure(exact), threshold(1.0)
 {
     ngram_generator_type *gen = new ngram_generator_type(n);
     reader_type *dbr = new reader_type;

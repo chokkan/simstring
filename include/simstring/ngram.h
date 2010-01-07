@@ -48,7 +48,8 @@ static void
 ngrams(
     const string_type& str,
     insert_iterator ins,
-    int n
+    int n,
+    bool be
     )
 {
     typedef typename string_type::value_type char_type;
@@ -56,11 +57,21 @@ ngrams(
     typedef std::map<string_type, int> ngram_stat_type;
     const char_type mark = (char_type)0x01;
 
-    // Append marks for begin/end of the string.
     string_type src;
-    for (int i = 0;i < n-1;++i) src += mark;
-    src += str;
-    for (int i = 0;i < n-1;++i) src += mark;
+    if (be) {
+        // Append marks for begin/end of the string.
+        for (int i = 0;i < n-1;++i) src += mark;
+        src += str;
+        for (int i = 0;i < n-1;++i) src += mark;
+    } else if ((int)str.length() < n) {
+        // Pad marks when the string is shorter than n.
+        src = str;
+        for (int i = 0;i < n - (int)str.length();++i) {
+            src += mark;
+        }
+    } else {
+        src = str;
+    }
     
     // Count n-grams in the string.
     ngram_stat_type stat;
@@ -95,19 +106,21 @@ ngrams(
 struct ngram_generator
 {
     int m_n;
+    bool m_be;
 
     /**
      * Constructs an instance of bi-gram generator.
      */
-    ngram_generator() : m_n(2)
+    ngram_generator() : m_n(2), m_be(true)
     {
     }
 
     /**
      * Constructs an instance of n-gram generator.
      *  @param  n       The unit of n-grams.
+     *  @param  be      The flag for begin/end of tokens.
      */
-    ngram_generator(int n) : m_n(n)
+    ngram_generator(int n, bool be=true) : m_n(n), m_be(be)
     {
     }
 
@@ -119,7 +132,7 @@ struct ngram_generator
     template <class string_type, class insert_iterator>
     void operator()(const string_type& str, insert_iterator ins) const
     {
-        ngrams(str, ins, m_n);
+        ngrams(str, ins, m_n, m_be);
     }
 };
 
