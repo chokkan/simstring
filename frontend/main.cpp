@@ -280,10 +280,10 @@ int main(int argc, char *argv[])
     std::ostream& es = std::cerr;
 
     // Show the copyright information.
-    os << SIMSTRING_NAME " ";
-    os << SIMSTRING_MAJOR_VERSION << "." << SIMSTRING_MINOR_VERSION << " ";
-    os << SIMSTRING_COPYRIGHT << std::endl;
-    os << std::endl;
+    es << SIMSTRING_NAME " ";
+    es << SIMSTRING_MAJOR_VERSION << "." << SIMSTRING_MINOR_VERSION << " ";
+    es << SIMSTRING_COPYRIGHT << std::endl;
+    es << std::endl;
 
     // Parse the command-line options.
     try { 
