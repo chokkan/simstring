@@ -40,7 +40,8 @@ public:
     bool be;
     int query_type;
     double threshold;
-    
+    bool echo_back;
+
 public:
     option() :
         mode(MODE_INTERACTIVE),
@@ -49,7 +50,8 @@ public:
         ngram_size(3),
         be(false),
         query_type(QT_COSINE),
-        threshold(0.7)
+        threshold(0.7),
+        echo_back(false)
     {
     }
 };
@@ -86,6 +88,9 @@ class option_parser :
 
         ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("threshold"))
             threshold = std::atof(arg);
+
+        ON_OPTION(SHORTOPT('e') || LONGOPT("echi"))
+            echo_back = true;
 
         ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
             ngram_size = std::atoi(arg);
@@ -238,6 +243,11 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
                 std::back_inserter(xstrs)
                 );
             break;
+        }
+
+        // Output the query string if necessary.
+        if (opt.echo_back) {
+            os << line << std::endl;
         }
 
         // Output the retrieved strings.
