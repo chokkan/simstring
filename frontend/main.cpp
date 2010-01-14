@@ -41,6 +41,7 @@ public:
     int query_type;
     double threshold;
     bool echo_back;
+    bool quiet;
 
 public:
     option() :
@@ -51,7 +52,8 @@ public:
         be(false),
         query_type(QT_COSINE),
         threshold(0.7),
-        echo_back(false)
+        echo_back(false),
+        quiet(false)
     {
     }
 };
@@ -89,8 +91,11 @@ class option_parser :
         ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("threshold"))
             threshold = std::atof(arg);
 
-        ON_OPTION(SHORTOPT('e') || LONGOPT("echi"))
+        ON_OPTION(SHORTOPT('e') || LONGOPT("echo"))
             echo_back = true;
+
+        ON_OPTION(SHORTOPT('q') || LONGOPT("quiet"))
+            quiet = true;
 
         ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
             ngram_size = std::atoi(arg);
@@ -152,7 +157,7 @@ int build(option& opt, istream_type& is)
         }
 
         // Progress report.
-        if (++n % 10000 == 0) {
+        if (!opt.quiet && ++n % 10000 == 0) {
             os << "Number of strings: " << n << std::endl;
             os.flush();
         }
@@ -257,9 +262,11 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
         }
         os.flush();
 
-        es << xstrs.size() << " strings retrieved (" <<
-            (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
-            " sec)" << std::endl;
+        if (!opt.quiet) {
+            es << xstrs.size() << " strings retrieved (" <<
+                (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
+                " sec)" << std::endl;
+        }
     }
 
     return 0;
