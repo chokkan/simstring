@@ -58,10 +58,10 @@ public:
     typedef typename ngrams_type::const_iterator const_iterator;
 
 protected:
+    const ngram_generator_type& m_gen;
     double m_th;
     string_type m_qstr;
     ngrams_type m_qgram;
-    const ngram_generator_type& m_gen;
 
 public:
     query_base(const ngram_generator_type& gen)
@@ -76,8 +76,8 @@ public:
     }
 
     query_base(const query_base& rho) :
-        m_qstr(rho.m_qstr), m_qgram(rho.m_qgram),
-        m_gen(rho.m_gen), m_th(rho.m_th)
+        m_gen(rho.m_gen), m_th(rho.m_th),
+        m_qstr(rho.m_qstr), m_qgram(rho.m_qgram)
     {
     }
 
