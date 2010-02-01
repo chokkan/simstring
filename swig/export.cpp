@@ -10,10 +10,10 @@ typedef simstring::ngram_generator ngram_generator_type;
 typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
 typedef simstring::reader_base<string_type> reader_type;
 
-writer::writer(const char *filename, int n)
+writer::writer(const char *filename, int n, bool be)
     : m_dbw(NULL), m_gen(NULL)
 {
-    ngram_generator_type *gen = new ngram_generator_type(n);
+    ngram_generator_type *gen = new ngram_generator_type(n, be);
     writer_type *dbw = new writer_type(*gen, filename);
 
     if (dbw->fail()) {
@@ -62,10 +62,10 @@ void writer::close()
     }
 }
 
-reader::reader(const char *filename, int n)
-	: m_dbr(NULL), m_gen(NULL), measure(exact), threshold(1.0)
+reader::reader(const char *filename, int n, bool be)
+    : m_dbr(NULL), m_gen(NULL), measure(exact), threshold(1.0)
 {
-    ngram_generator_type *gen = new ngram_generator_type(n);
+    ngram_generator_type *gen = new ngram_generator_type(n, be);
     reader_type *dbr = new reader_type;
 
     if (!dbr->open(filename)) {

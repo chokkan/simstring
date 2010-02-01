@@ -111,7 +111,7 @@ struct ngram_generator
     /**
      * Constructs an instance of bi-gram generator.
      */
-    ngram_generator() : m_n(2), m_be(true)
+    ngram_generator() : m_n(3), m_be(false)
     {
     }
 
@@ -120,7 +120,7 @@ struct ngram_generator
      *  @param  n       The unit of n-grams.
      *  @param  be      The flag for begin/end of tokens.
      */
-    ngram_generator(int n, bool be=true) : m_n(n), m_be(be)
+    ngram_generator(int n, bool be=false) : m_n(n), m_be(be)
     {
     }
 

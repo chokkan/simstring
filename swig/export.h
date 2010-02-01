@@ -15,7 +15,7 @@ protected:
     void *m_gen;
 
 public:
-    writer(const char *filename, int n);
+    writer(const char *filename, int n = 3, bool be = false);
     virtual ~writer();
     void insert(const char *string);
     void close();
@@ -30,7 +30,7 @@ protected:
 public:
 
 public:
-    reader(const char *filename, int n);
+    reader(const char *filename, int n = 3, bool be = false);
     virtual ~reader();
     std::vector<std::string> retrieve(const char *query);
     void close();
