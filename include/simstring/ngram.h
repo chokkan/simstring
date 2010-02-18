@@ -1,7 +1,7 @@
 /*
  *      N-gram generator.
  *
- * Copyright (c) 2009, Naoaki Okazaki
+ * Copyright (c) 2009,2010 Naoaki Okazaki
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -40,6 +40,14 @@
 namespace simstring
 {
 
+/**
+ * Obtain a set of letter n-grams in a string.
+ *  @param  str     The string.
+ *  @param  ins     The insert iterator that receives the set of n-grams.
+ *  @param  n       The unit of n-grams.
+ *  @param  be      \c true to generate n-grams that encode begin and end of
+ *                  a string.
+ */
 template <
     class string_type,
     class insert_iterator
@@ -75,17 +83,12 @@ ngrams(
     
     // Count n-grams in the string.
     ngram_stat_type stat;
-    for (int i = 0;i < (int)src.length()-n+1;++i) {
+    for (typename string_type::size_type i = 0;i < src.length()-n+1;++i) {
         string_type ngram = src.substr(i, n);
-        typename ngram_stat_type::iterator it = stat.find(ngram);
-        if (it == stat.end()) {
-            stat[ngram] = 1;
-        } else {
-            ++it->second;
-        }
+        ++stat[ngram];
     }
 
-    // Convert the n-gram stat to a vector.
+    // Convert the n-gram stat into a set.
     typename ngram_stat_type::const_iterator it;
     for (it = stat.begin();it != stat.end();++it) {
         *ins = it->first;
@@ -101,33 +104,36 @@ ngrams(
 /**
  * N-gram generator.
  *
- *  This class converts a string into n-grams.
+ *  This class generates n-grams for a string.
  */
-struct ngram_generator
+class ngram_generator
 {
-    int m_n;
-    bool m_be;
+protected:
+    int m_n;            ///< The unit of n-grams.
+    bool m_be;          ///< The flag for begin/end of tokens.
 
+public:
     /**
-     * Constructs an instance of bi-gram generator.
+     * Constructs an instance as a tri-gram generator.
      */
     ngram_generator() : m_n(3), m_be(false)
     {
     }
 
     /**
-     * Constructs an instance of n-gram generator.
+     * Constructs an instance as an n-gram generator.
      *  @param  n       The unit of n-grams.
-     *  @param  be      The flag for begin/end of tokens.
+     *  @param  be      \c true to generate n-grams that encode begin and
+     *                  end of a string.
      */
     ngram_generator(int n, bool be=false) : m_n(n), m_be(be)
     {
     }
 
     /**
-     * Generates n-grams from a string.
+     * Obtain a set of letter n-grams in a string.
      *  @param  str     The string.
-     *  @param  ins     The insert iterator that receives n-grams.
+     *  @param  ins     The insert iterator that receives the set of n-grams.
      */
     template <class string_type, class insert_iterator>
     void operator()(const string_type& str, insert_iterator ins) const

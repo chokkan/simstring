@@ -190,11 +190,11 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
     typedef std::vector<string_type> strings_type;
     typedef simstring::ngram_generator ngram_generator_type;
     typedef simstring::reader_base<string_type> reader_type;
-    typedef simstring::query::exact<string_type, ngram_generator_type> query_exact_type;
-    typedef simstring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
-    typedef simstring::query::dice<string_type, ngram_generator_type> query_dice_type;
-    typedef simstring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
-    typedef simstring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
+    typedef simstring::query::exact<string_type> query_exact_type;
+    typedef simstring::query::cosine<string_type> query_cosine_type;
+    typedef simstring::query::dice<string_type> query_dice_type;
+    typedef simstring::query::jaccard<string_type> query_jaccard_type;
+    typedef simstring::query::overlap<string_type> query_overlap_type;
 
     reader_type db;
     std::ostream& es = std::cerr;

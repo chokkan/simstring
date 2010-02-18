@@ -1,7 +1,7 @@
 /*
  *      SimString queries.
  *
- * Copyright (c) 2009, Naoaki Okazaki
+ * Copyright (c) 2009,2010 Naoaki Okazaki
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -39,6 +39,8 @@
 #include <vector>
 #include <limits.h>
 
+#include "ngram.h"
+
 namespace simstring { namespace query {
 
 
@@ -48,7 +50,10 @@ namespace simstring { namespace query {
  *  @param  string_tmpl             The string class.
  *  @param  ngram_generator_tmpl    The n-gram generator class.
  */
-template <class string_tmpl, class ngram_generator_tmpl>
+template <
+    class string_tmpl,
+    class ngram_generator_tmpl = simstring::ngram_generator
+>
 class query_base
 {
 public:
@@ -129,7 +134,10 @@ public:
 
 
 
-template <class string_tmpl, class ngram_generator_tmpl>
+template <
+    class string_tmpl,
+    class ngram_generator_tmpl = simstring::ngram_generator
+>
 class exact :
     public query_base<string_tmpl, ngram_generator_tmpl>
 {
@@ -176,7 +184,10 @@ public:
 
 
 
-template <class string_tmpl, class ngram_generator_tmpl>
+template <
+    class string_tmpl,
+    class ngram_generator_tmpl = simstring::ngram_generator
+>
 class cosine :
     public query_base<string_tmpl, ngram_generator_tmpl>
 {
@@ -218,7 +229,10 @@ public:
 
 
 
-template <class string_tmpl, class ngram_generator_tmpl>
+template <
+    class string_tmpl,
+    class ngram_generator_tmpl = simstring::ngram_generator
+>
 class dice :
     public query_base<string_tmpl, ngram_generator_tmpl>
 {
@@ -261,7 +275,10 @@ public:
 
 
 
-template <class string_tmpl, class ngram_generator_tmpl>
+template <
+    class string_tmpl,
+    class ngram_generator_tmpl = simstring::ngram_generator
+>
 class jaccard :
     public query_base<string_tmpl, ngram_generator_tmpl>
 {
@@ -303,7 +320,10 @@ public:
 
 
 
-template <class string_tmpl, class ngram_generator_tmpl>
+template <
+    class string_tmpl,
+    class ngram_generator_tmpl = simstring::ngram_generator
+>
 class overlap :
     public query_base<string_tmpl, ngram_generator_tmpl>
 {
