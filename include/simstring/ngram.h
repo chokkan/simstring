@@ -131,6 +131,37 @@ public:
     }
 
     /**
+     * Sets the parameters for n-gram generation.
+     *  @param  n       The unit of n-grams.
+     *  @param  be      \c true to generate n-grams that encode begin and
+     *                  end of a string.
+     */
+    void set(int n, bool be=false)
+    {
+        m_n = n;
+        m_be = be;
+    }
+
+    /**
+     * Gets the unit of n-grams.
+     *  @return int     The unit of n-grams.
+     */
+    int get_n() const
+    {
+        return m_n;
+    }
+
+    /**
+     * Gets the flag for representing a begin/end of letters.
+     *  @return bool    \c true if n-grams encoding the begin and end of a
+     *                  string are generated.
+     */
+    bool get_be() const
+    {
+        return m_be;
+    }
+
+    /**
      * Obtain a set of letter n-grams in a string.
      *  @param  str     The string.
      *  @param  ins     The insert iterator that receives the set of n-grams.

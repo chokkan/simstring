@@ -55,7 +55,7 @@
 #define	SIMSTRING_COPYRIGHT      "Copyright (c) 2009 Naoaki Okazaki"
 #define	SIMSTRING_MAJOR_VERSION  0
 #define SIMSTRING_MINOR_VERSION  2
-#define SIMSTRING_STREAM_VERSION 1
+#define SIMSTRING_STREAM_VERSION 2
 
 namespace simstring
 {
@@ -144,7 +144,7 @@ public:
      * Returns the maximum length of keys in the n-gram database.
      *  @return int     The maximum length of keys.
      */
-    int max_length() const
+    int max_size() const
     {
         return (int)m_indices.size();
     }
@@ -213,6 +213,7 @@ public:
      */
     bool store(const std::string& base)
     {
+        // Write out all the indices to files.
         for (int i = 0;i < (int)m_indices.size();++i) {
             if (!m_indices[i].empty()) {
                 std::stringstream ss;
@@ -264,6 +265,11 @@ protected:
 
 
 
+/**
+ * A writer for simstring database.
+ *  @param  string_tmpl             The type of a string.
+ *  @param  ngram_generator_tmpl    The type of an n-gram generator.
+ */
 template <
     class string_tmpl,
     class ngram_generator_tmpl
@@ -284,8 +290,11 @@ public:
     typedef ngramdb_writer_base<string_tmpl, uint32_t, ngram_generator_tmpl> base_type;
 
 protected:
+    /// The base name of the database.
     std::string m_name;
+    /// The output stream for the string collection.
     std::ofstream m_ofs;
+    /// The number of strings in the database.
     int m_num_entries;
 
 public:
@@ -401,7 +410,7 @@ protected:
     bool write_header(std::ofstream& ofs)
     {
         uint32_t num_entries = m_num_entries;
-        uint32_t max_length = (uint32_t)this->max_length();
+        uint32_t max_size = (uint32_t)this->max_size();
         uint32_t size = (uint32_t)m_ofs.tellp();
 
         // Seek to the beginning of the master file, to which the file header
@@ -414,11 +423,14 @@ protected:
 
         // Write the file header.
         m_ofs.write("SSDB", 4);
-        write_uint32(size);
-        write_uint32(SIMSTRING_STREAM_VERSION);
         write_uint32(BYTEORDER_CHECK);
+        write_uint32(SIMSTRING_STREAM_VERSION);
+        write_uint32(size);
+        write_uint32(sizeof(char_type));
+        write_uint32(this->m_gen.get_n());
+        write_uint32(static_cast<int>(this->m_gen.get_be()));
         write_uint32(num_entries);
-        write_uint32(max_length);
+        write_uint32(max_size);
         if (ofs.fail()) {
             this->m_error << "Failed to write a file header to the master file.";
             return false;
@@ -452,6 +464,10 @@ public:
     //typedef std::map<value_type, int> candidates_type;
     typedef cdbpp::cdbpp index_type;
     
+protected:
+    /// The error message.
+    std::stringstream m_error;
+
 protected:
     struct posting_type
     {
@@ -501,11 +517,11 @@ public:
     {
     }
 
-    void open(const std::string& name, int max_length)
+    void open(const std::string& name, int max_size)
     {
         m_name = name;
-        m_max_length = max_length;
-        m_dbs.resize(max_length);
+        m_max_length = max_size;
+        m_dbs.resize(max_size);
     }
 
     void close()
@@ -518,7 +534,7 @@ public:
     void search(const query_type& query, results_type& results)
     {
         int i;
-        const int qlen = query.length();
+        const int qlen = query.size();
 
         // Allocate a vector of postings corresponding to n-gram queries.
         postings_type posts(qlen);
@@ -526,8 +542,8 @@ public:
         // Compute the range of n-gram lengths for the candidate strings;
         // in other words, we do not have to search for strings whose n-gram
         // lengths are out of this range.
-        const int xmin = std::max(query.min_length(), 1);
-        const int xmax = std::min(query.max_length(), m_max_length);
+        const int xmin = std::max(query.min_size(), 1);
+        const int xmax = std::min(query.max_size(), m_max_length);
 
         // Loop for each length in the range.
         for (int xlen = xmin;xlen <= xmax;++xlen) {
@@ -650,22 +666,54 @@ protected:
     }
 };
 
+/**
+ * Query types.
+ */
+enum {
+    /// Exact match.
+    QT_EXACT = 0,
+    /// Approximate string matching with dice coefficient.
+    QT_DICE,
+    /// Approximate string matching with cosine coefficient.
+    QT_COSINE,
+    /// Approximate string matching with jaccard coefficient.
+    QT_JACCARD,
+    /// Approximate string matching with overlap coefficient.
+    QT_OVERLAP,
+};
 
+
+/**
+ * A database reader for SimString.
+ *  @param  string_tmpl             The type of a string.
+ *  @param  ngram_generator_tmpl    The type of an n-gram generator.
+ */
 template <
-    class string_tmpl
+    class string_tmpl,
+    class ngram_generator_tmpl = ngram_generator
 >
 class reader_base
     : public ngramdb_reader_base<string_tmpl, uint32_t>
 {
 public:
-    /// The type representing a character.
+    /// The type representing a string.
     typedef string_tmpl string_type;
+    /// The type representing a character.
     typedef typename string_type::value_type char_type;
-    typedef std::vector<string_type> ngrams_type;
-    /// 
+    /// The type of the base class.
     typedef ngramdb_reader_base<string_tmpl, uint32_t> base_type;
 
+
 protected:
+    /// The type of an n-gram set
+    typedef std::vector<string_type> ngrams_type;
+
+    /// The type of an n-gram generator.
+    typedef ngram_generator_tmpl ngram_generator_type;
+    /// The n-gram generator.
+    ngram_generator_type m_gen;
+
+    /// The content of the master file.
     std::vector<char> m_strings;
 
 public:
@@ -684,61 +732,170 @@ public:
         close();
     }
 
+    /**
+     * Checks whether an error has occurred.
+     *  @return bool    \c true if an error has occurred.
+     */
+    bool fail() const
+    {
+        return !m_error.str().empty();
+    }
+
+    /**
+     * Returns an error message.
+     *  @return std::string The string of the error message.
+     */
+    std::string error() const
+    {
+        return m_error.str();
+    }
+
+    /**
+     * Opens a SimString database.
+     *  @param  name            The name of the SimString database.
+     */
     bool open(const std::string& name)
     {
-        uint32_t num_entries, max_length;
+        uint32_t ngram_unit, be;
+        uint32_t num_entries, max_size;
 
         // Open the master file.
         std::ifstream ifs(name.c_str(), std::ios_base::in | std::ios_base::binary);
         if (ifs.fail()) {
+            this->m_error << "Failed to open the master file: " << name;
             return false;
         }
+
+        // Obtain the size of the master file.
         ifs.seekg(0, std::ios_base::end);
         size_t size = (size_t)ifs.tellg();
         ifs.seekg(0, std::ios_base::beg);
         
+        // Read the image of the master file.
         m_strings.resize(size);
         ifs.read(&m_strings[0], size);
         ifs.close();
 
         // Check the file header.
         const char* p = &m_strings[0];
-        if (size < 12 || std::strncmp(p, "SSDB", 4) != 0) {
-            return false;
-        }
-        p += 4;
-
-        // Check the chunk size.
-        if (size != read_uint32(p)) {
-            return false;
-        }
-        p += 4;
-
-        // Check the version.
-        if (SIMSTRING_STREAM_VERSION != read_uint32(p)) {
+        if (size < 36 || std::strncmp(p, "SSDB", 4) != 0) {
+            this->m_error << "Incorrect file format";
             return false;
         }
         p += 4;
 
         // Check the byte order.
         if (BYTEORDER_CHECK != read_uint32(p)) {
+            this->m_error << "Incompatible byte order";
             return false;
         }
         p += 4;
 
+        // Check the version.
+        if (SIMSTRING_STREAM_VERSION != read_uint32(p)) {
+            this->m_error << "Incompatible stream version";
+            return false;
+        }
+        p += 4;
+
+        // Check the chunk size.
+        if (size != read_uint32(p)) {
+            this->m_error << "Inconsistent chunk size";
+            return false;
+        }
+        p += 4;
+
+        // Check the character size.
+        if (sizeof(char_type) != read_uint32(p)) {
+            this->m_error << "Incompatible character type";
+            return false;
+        }
+        p += 4;
+
+        // Read the unit of n-grams, begin/end flag.
+        ngram_unit = read_uint32(p);
+        p += 4;
+        be = read_uint32(p);
+        p += 4;
+
+        // Read the number of enties.
         num_entries = read_uint32(p);
         p += 4;
-        max_length = read_uint32(p);
 
-        base_type::open(name, (int)max_length);
+        // Read the maximum size of strings in the database.
+        max_size = read_uint32(p);
+
+        // Initialize the n-gram generator.
+        m_gen.set((int)ngram_unit, be != 0);
+
+        base_type::open(name, (int)max_size);
         return true;
     }
 
+    /**
+     * Closes the database.
+     */
     void close()
     {
         base_type::close();
     }
 
+    /**
+     * Retrieves strings that are similar to the query.
+     *  @param  query           The query string.
+     *  @param  query_type      The query type.
+     *  @param  threshold       The threshold for approximate string matching.
+     *  @param  ins             The insert iterator that receives retrieved
+     *                          strings.
+     */
+    template <class insert_iterator>
+    void retrieve(
+        const string_type& query,
+        int query_type,
+        double threshold,
+        insert_iterator ins
+        )
+    {
+        switch (query_type) {
+        case QT_EXACT:
+            this->retrieve(
+                simstring::query::exact<string_type>(m_gen, query),
+                ins
+                );
+            break;
+        case QT_DICE:
+            this->retrieve(
+                simstring::query::dice<string_type>(m_gen, query, threshold),
+                ins
+                );
+            break;
+        case QT_COSINE:
+            this->retrieve(
+                simstring::query::cosine<string_type>(m_gen, query, threshold),
+                ins
+                );
+            break;
+        case QT_JACCARD:
+            this->retrieve(
+                simstring::query::jaccard<string_type>(m_gen, query, threshold),
+                ins
+                );
+            break;
+        case QT_OVERLAP:
+            this->retrieve(
+                simstring::query::overlap<string_type>(m_gen, query, threshold),
+                ins
+                );
+            break;
+        }
+    }
+
+    /**
+     * Retrieves strings that are similar to the query object.
+     *  @param  query           The query object.
+     *  @param  ins             The insert iterator that receives retrieved
+     *                          strings.
+     */
     template <class query_type, class insert_iterator>
     void retrieve(const query_type& query, insert_iterator ins)
     {
@@ -752,6 +909,7 @@ public:
             *ins = xstr;
         }
     }
+
 
 protected:
     inline uint32_t read_uint32(const char* p) const

@@ -77,15 +77,15 @@ class option_parser :
 
         ON_OPTION_WITH_ARG(SHORTOPT('s') || LONGOPT("similarity"))
             if (std::strcmp(arg, "exact") == 0) {
-                query_type = QT_EXACT;
+                query_type = simstring::QT_EXACT;
             } else if (std::strcmp(arg, "dice") == 0) {
-                query_type = QT_DICE;
+                query_type = simstring::QT_DICE;
             } else if (std::strcmp(arg, "cosine") == 0) {
-                query_type = QT_COSINE;
+                query_type = simstring::QT_COSINE;
             } else if (std::strcmp(arg, "jaccard") == 0) {
-                query_type = QT_JACCARD;
+                query_type = simstring::QT_JACCARD;
             } else if (std::strcmp(arg, "overlap") == 0) {
-                query_type = QT_OVERLAP;
+                query_type = simstring::QT_OVERLAP;
             }
 
         ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("threshold"))
@@ -217,6 +217,9 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
         clock_t clk = std::clock();
 
         // Issue a query.
+        db.retrieve(line, opt.query_type, opt.threshold, std::back_inserter(xstrs));
+
+        /*
         switch (opt.query_type) {
         case option::QT_EXACT:
             db.retrieve(
@@ -249,6 +252,7 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
                 );
             break;
         }
+        */
 
         // Output the query string if necessary.
         if (opt.echo_back) {
