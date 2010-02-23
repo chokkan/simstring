@@ -52,7 +52,7 @@
 #include "memory_mapped_file.h"
 
 #define	SIMSTRING_NAME           "SimString"
-#define	SIMSTRING_COPYRIGHT      "Copyright (c) 2009 Naoaki Okazaki"
+#define	SIMSTRING_COPYRIGHT      "Copyright (c) 2009,2010 Naoaki Okazaki"
 #define	SIMSTRING_MAJOR_VERSION  0
 #define SIMSTRING_MINOR_VERSION  2
 #define SIMSTRING_STREAM_VERSION 2
@@ -62,6 +62,22 @@ namespace simstring
 
 enum {
     BYTEORDER_CHECK = 0x62445371,
+};
+
+/**
+ * Query types.
+ */
+enum {
+    /// Exact match.
+    QT_EXACT = 0,
+    /// Approximate string matching with dice coefficient.
+    QT_DICE,
+    /// Approximate string matching with cosine coefficient.
+    QT_COSINE,
+    /// Approximate string matching with jaccard coefficient.
+    QT_JACCARD,
+    /// Approximate string matching with overlap coefficient.
+    QT_OVERLAP,
 };
 
 
@@ -93,9 +109,9 @@ public:
     /// The vector type of values associated with an n-gram.
     typedef std::vector<value_type> values_type;
     /// The type implementing an index (associations from n-grams to values).
-    typedef std::map<string_type, values_type> index_type;
+    typedef std::map<string_type, values_type> hashdb_type;
     /// The vector of indices for different n-gram sizes.
-    typedef std::vector<index_type> indices_type;
+    typedef std::vector<hashdb_type> indices_type;
 
 protected:
     /// The vector of indices.
@@ -186,18 +202,18 @@ public:
         if (m_indices.size() < ngrams.size()) {
             m_indices.resize(ngrams.size());
         }
-        index_type& index = m_indices[ngrams.size()-1];
+        hashdb_type& index = m_indices[ngrams.size()-1];
 
         // Store the associations from the n-grams to the value.
         typename ngrams_type::const_iterator it;
         for (it = ngrams.begin();it != ngrams.end();++it) {
             const string_type& ngram = *it;
-            typename index_type::iterator iti = index.find(ngram);
+            typename hashdb_type::iterator iti = index.find(ngram);
             if (iti == index.end()) {
                 // Create a new posting array.
                 values_type v(1);
                 v[0] = value;
-                index.insert(typename index_type::value_type(ngram, v));
+                index.insert(typename hashdb_type::value_type(ngram, v));
             } else {
                 // Append the value to the existing posting array.
                 iti->second.push_back(value);
@@ -229,7 +245,7 @@ public:
     }
 
 protected:
-    bool store(const std::string& name, const index_type& index)
+    bool store(const std::string& name, const hashdb_type& index)
     {
         // Open the database file with binary mode.
         std::ofstream ofs(name.c_str(), std::ios::binary);
@@ -243,7 +259,7 @@ protected:
             cdbpp::builder dbw(ofs);
 
             // Put associations: n-gram -> values.
-            typename index_type::const_iterator it;
+            typename hashdb_type::const_iterator it;
             for (it = index.begin();it != index.end();++it) {
                 // Put an association from an n-gram to its values. 
                 dbw.put(
@@ -371,13 +387,11 @@ public:
             b &= this->store(m_name);
         }
 
-        // Finalize the file header.
+        // Finalize the file header, and close the file.
         if (m_ofs.is_open()) {
             b &= this->write_header(m_ofs);
+            m_ofs.close();
         }
-
-        // Close the file.
-        m_ofs.close();
 
         // Initialize the members.
         m_name.clear();
@@ -447,6 +461,12 @@ protected:
 
 
 
+/**
+ * A reader for an n-gram database.
+ *  @param  string_tmpl             The type of a string.
+ *  @param  value_tmpl              The value type.
+ *                                  This is required to be an integer type.
+ */
 template <
     class string_tmpl,
     class value_tmpl
@@ -454,102 +474,165 @@ template <
 class ngramdb_reader_base
 {
 public:
+    /// The type of a string.
     typedef string_tmpl string_type;
+    /// The type of a SID.
     typedef value_tmpl value_type;
+    /// The type of a character.
     typedef typename string_type::value_type char_type;
-    typedef std::basic_stringstream<char_type> stringstream_type;
-    typedef std::basic_fstream<char_type> fstream_type;
-    typedef std::vector<string_type> ngrams_type;
-    typedef std::set<value_type> results_type;
-    //typedef std::map<value_type, int> candidates_type;
-    typedef cdbpp::cdbpp index_type;
     
 protected:
-    /// The error message.
-    std::stringstream m_error;
-
-protected:
-    struct posting_type
+    /// An inverted list of SIDs.
+    struct inverted_list_type
     {
         int num;
         const value_type* values;
 
         friend bool operator<(
-            const posting_type& x, 
-            const posting_type& y
+            const inverted_list_type& x, 
+            const inverted_list_type& y
             )
         {
             return (x.num < y.num);
         }
     };
-    typedef std::vector<posting_type> postings_type;
+    /// An array of inverted lists.
+    typedef std::vector<inverted_list_type> inverted_lists_type;
 
-    struct database_type
+    /// A hash table that retrieves SIDs from n-grams.
+    typedef cdbpp::cdbpp hashtbl_type;
+
+    /// An index containing strings of the same size.
+    struct index_type
     {
+        /// The memory image of the database.
         memory_mapped_file  image;
-        index_type          index;
+        /// The index.
+        hashtbl_type        table;
     };
 
+    /// Indices with different sizes of strings.
+    typedef std::vector<index_type> indices_type;
+
+    /// A candidate string of retrieved results.
     struct candidate_type
     {
+        /// The SID.
         value_type  value;
+        /// The overlap count (frequency of the SID in the inverted lists).
         int         num;
 
+        /**
+         * Constructs a candidate.
+         *  @param  v       The SID.
+         *  @param  n       The overlap count.
+         */
         candidate_type(value_type v, int n)
             : value(v), num(n)
         {
         }
     };
+
+    /// An array of candidates.
     typedef std::vector<candidate_type> candidates_type;
 
+    /// An array of SIDs retrieved.
+    typedef std::vector<value_type> results_type;
+
 protected:
-    typedef std::vector<database_type> databases_type;
-    databases_type m_dbs;
-    int m_max_length;
+    /// The array of the indices.
+    indices_type m_indices;
+    /// The maximum size of strings in the database.
+    int m_max_size;
+    /// The database name (base name of indices).
     std::string m_name;
+    /// The error message.
+    std::stringstream m_error;
+
 
 public:
+    /**
+     * Constructs an object.
+     */
     ngramdb_reader_base()
     {
     }
 
+    /**
+     * Destructs an object.
+     */
     virtual ~ngramdb_reader_base()
     {
     }
 
+    /**
+     * Checks whether an error has occurred.
+     *  @return bool    \c true if an error has occurred.
+     */
+    bool fail() const
+    {
+        return !m_error.str().empty();
+    }
+
+    /**
+     * Returns an error message.
+     *  @return std::string The string of the error message.
+     */
+    std::string error() const
+    {
+        return m_error.str();
+    }
+
+    /**
+     * Opens an database.
+     *  @param  name        The name of the database.
+     *  @param  max_size    The maximum size of the strings.
+     */
     void open(const std::string& name, int max_size)
     {
         m_name = name;
-        m_max_length = max_size;
-        m_dbs.resize(max_size);
+        m_max_size = max_size;
+        // The maximum size corresponds to the number of indices in the database.
+        m_indices.resize(max_size);
     }
 
+    /**
+     * Closes an database.
+     */
     void close()
     {
         m_name.clear();
-        //m_dbs.clear();
+        m_indices.clear();
+        m_error.str("");
     }
 
+    /**
+     * Performs an overlap join on inverted lists retrieved for the query.
+     *  @param  query       The query object that stores query n-grams,
+     *                      threshold, and conditions for the similarity
+     *                      measure.
+     *  @param  results     The SIDs that satisfies the overlap join.
+     */
     template <class query_type>
-    void search(const query_type& query, results_type& results)
+    void overlapjoin(const query_type& query, results_type& results)
     {
         int i;
-        const int qlen = query.size();
+        const int qsize = query.size();
 
         // Allocate a vector of postings corresponding to n-gram queries.
-        postings_type posts(qlen);
+        inverted_lists_type posts(qsize);
 
         // Compute the range of n-gram lengths for the candidate strings;
         // in other words, we do not have to search for strings whose n-gram
         // lengths are out of this range.
         const int xmin = std::max(query.min_size(), 1);
-        const int xmax = std::min(query.max_size(), m_max_length);
+        const int xmax = std::min(query.max_size(), m_max_size);
 
         // Loop for each length in the range.
-        for (int xlen = xmin;xlen <= xmax;++xlen) {
+        for (int xsize = xmin;xsize <= xmax;++xsize) {
             // Access to the n-gram index for the length.
-            index_type& index = open_index(m_name, xlen);
-            if (!index.is_open()) {
+            hashtbl_type& tbl = open_index(m_name, xsize);
+            if (!tbl.is_open()) {
                 // Ignore an empty index.
                 continue;
             }
@@ -560,7 +643,7 @@ public:
             typename query_type::const_iterator it;
             for (it = query.begin(), i = 0;it != query.end();++it, ++i) {
                 size_t vsize;
-                const void *values = index.get(
+                const void *values = tbl.get(
                     it->c_str(),
                     sizeof(char_type) * it->length(),
                     &vsize
@@ -574,9 +657,9 @@ public:
             std::sort(posts.begin(), posts.end());
 
             // The minimum number of n-gram matches required for the query.
-            const int mmin = query.min_match(xlen);
+            const int mmin = query.min_match(xsize);
             // A candidate must match to one of n-grams in these queries.
-            const int min_queries = qlen - mmin + 1;
+            const int min_queries = qsize - mmin + 1;
 
             // Step 1: collect candidates that match to the initial queries.
             candidates_type cands;
@@ -608,7 +691,7 @@ public:
             }
 
             // Step 2: count the number of matches with remaining queries.
-            for (;i < qlen;++i) {
+            for (;i < qsize;++i) {
                 candidates_type tmp;
                 typename candidates_type::const_iterator itc;
                 const value_type* first = posts[i].values;
@@ -623,8 +706,8 @@ public:
 
                     if (mmin <= num) {
                         // This candidate has sufficient matches.
-                        results.insert(itc->value);
-                    } else if (num + (qlen - i - 1) >= mmin) {
+                        results.push_back(itc->value);
+                    } else if (num + (qsize - i - 1) >= mmin) {
                         // This candidate still has the chance.
                         tmp.push_back(candidate_type(itc->value, num));
                     }
@@ -642,7 +725,7 @@ public:
                 typename candidates_type::const_iterator itc;
                 for (itc = cands.begin();itc != cands.end();++itc) {
                     if (mmin <= itc->num) {
-                        results.insert(itc->value);
+                        results.push_back(itc->value);
                     }
                 }
             }
@@ -650,37 +733,28 @@ public:
     }
 
 protected:
-    index_type& open_index(const std::string& base, int length)
+    /**
+     * Open the index storing strings of the specific size.
+     *  @param  base            The base name of the indices.
+     *  @param  size            The size of strings.
+     *  @return hashtbl_type&   The hash table of the index.
+     */
+    hashtbl_type& open_index(const std::string& base, int size)
     {
-        database_type& db = m_dbs[length-1];
-        if (!db.index.is_open()) {
+        index_type& index = m_indices[size-1];
+        if (!index.table.is_open()) {
             std::stringstream ss;
-            ss << base << '.' << length << ".cdb";
-            db.image.open(ss.str().c_str(), std::ios::in);
-            if (db.image.is_open()) {
-                db.index.open(db.image.data(), db.image.size());
+            ss << base << '.' << size << ".cdb";
+            index.image.open(ss.str().c_str(), std::ios::in);
+            if (index.image.is_open()) {
+                index.table.open(index.image.data(), index.image.size());
             }
         }
 
-        return db.index;
+        return index.table;
     }
 };
 
-/**
- * Query types.
- */
-enum {
-    /// Exact match.
-    QT_EXACT = 0,
-    /// Approximate string matching with dice coefficient.
-    QT_DICE,
-    /// Approximate string matching with cosine coefficient.
-    QT_COSINE,
-    /// Approximate string matching with jaccard coefficient.
-    QT_JACCARD,
-    /// Approximate string matching with overlap coefficient.
-    QT_OVERLAP,
-};
 
 
 /**
@@ -730,24 +804,6 @@ public:
     virtual ~reader_base()
     {
         close();
-    }
-
-    /**
-     * Checks whether an error has occurred.
-     *  @return bool    \c true if an error has occurred.
-     */
-    bool fail() const
-    {
-        return !m_error.str().empty();
-    }
-
-    /**
-     * Returns an error message.
-     *  @return std::string The string of the error message.
-     */
-    std::string error() const
-    {
-        return m_error.str();
     }
 
     /**
@@ -900,11 +956,10 @@ public:
     void retrieve(const query_type& query, insert_iterator ins)
     {
         typename base_type::results_type results;
-        base_type::search(query, results);
+        base_type::overlapjoin(query, results);
         typename base_type::results_type::const_iterator it;
         const char* strings = &m_strings[0];
         for (it = results.begin();it != results.end();++it) {
-            ngrams_type xgrams;
             const char_type* xstr = reinterpret_cast<const char_type*>(strings + *it);
             *ins = xstr;
         }

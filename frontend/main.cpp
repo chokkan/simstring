@@ -1,5 +1,38 @@
+/*
+ *      SimString frontend.
+ *
+ * Copyright (c) 2009,2010 Naoaki Okazaki
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the authors nor the names of its contributors may
+ *       be used to endorse or promote products derived from this software
+ *       without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER
+ * OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/* $Id$ */
+
 #include <cstdlib>
 #include <ctime>
+#include <ios>
 #include <iostream>
 #include <iterator>
 #include <locale>
@@ -14,17 +47,10 @@ class option
 {
 public:
     enum {
-        MODE_INTERACTIVE,
+        MODE_RETRIEVE = 0,
         MODE_BUILD,
         MODE_HELP,
-    };
-
-    enum {
-        QT_EXACT,
-        QT_DICE,
-        QT_COSINE,
-        QT_JACCARD,
-        QT_OVERLAP,
+        MODE_VERSION,
     };
 
     enum {
@@ -42,18 +68,20 @@ public:
     double threshold;
     bool echo_back;
     bool quiet;
+    bool benchmark;
 
 public:
     option() :
-        mode(MODE_INTERACTIVE),
+        mode(MODE_RETRIEVE),
         code(CC_CHAR),
         name(""),
         ngram_size(3),
         be(false),
-        query_type(QT_COSINE),
+        query_type(simstring::QT_COSINE),
         threshold(0.7),
         echo_back(false),
-        quiet(false)
+        quiet(false),
+        benchmark(false)
     {
     }
 };
@@ -71,6 +99,9 @@ class option_parser :
 
         ON_OPTION(SHORTOPT('w') || LONGOPT("wchar"))
             code = CC_WCHAR;
+
+        ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
+            ngram_size = std::atoi(arg);
 
         ON_OPTION(SHORTOPT('m') || LONGOPT("mark"))
             be = true;
@@ -97,8 +128,11 @@ class option_parser :
         ON_OPTION(SHORTOPT('q') || LONGOPT("quiet"))
             quiet = true;
 
-        ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
-            ngram_size = std::atoi(arg);
+        ON_OPTION(SHORTOPT('p') || LONGOPT("benchmark"))
+            benchmark = true;
+
+        ON_OPTION(SHORTOPT('v') || LONGOPT("version"))
+            mode = MODE_VERSION;
 
         ON_OPTION(SHORTOPT('h') || LONGOPT("help"))
             mode = MODE_HELP;
@@ -109,6 +143,38 @@ class option_parser :
 int usage(std::ostream& os, const char *argv0)
 {
     os << "USAGE: " << argv0 << " [OPTIONS]" << std::endl;
+    os << "This utility finds strings in the database (DB) such that they have similarity," << std::endl;
+    os << "in the similarity measure (SIM), no smaller than the threshold (TH) with" << std::endl;
+    os << "queries read from STDIN. When -b (--build) option is specified, this utility" << std::endl;
+    os << "builds a database (DB) for strings read from STDIN." << std::endl;
+    os << std::endl;
+    os << "OPTIONS:" << std::endl;
+    os << "  -b, --build           build a database for strings read from STDIN" << std::endl;
+    os << "  -d, --database=DB     specify a database file" << std::endl;
+    os << "  -w, --wchar           use wide characters (wchar_t)" << std::endl;
+    os << "  -n, --ngram=N         specify the unit of n-grams (DEFAULT=3)" << std::endl;
+    os << "  -m, --mark            include marks for begins and ends of strings" << std::endl;
+    os << "  -s, --similarity=SIM  specify a similarity measure (DEFAULT='cosine'):" << std::endl;
+    os << "      exact                 exact match" << std::endl;
+    os << "      dice                  dice coefficient" << std::endl;
+    os << "      cosine                cosine coefficient" << std::endl;
+    os << "      jaccard               jaccard coefficient" << std::endl;
+    os << "      overlap               overlap coefficient" << std::endl;
+    os << "  -t, --threshold=TH    specify the threshold (DEFAULT=0.7)" << std::endl;
+    os << "  -e, --echo-back       echo back query strings to the output" << std::endl;
+    os << "  -q, --quiet           suppress supplemental information from the output" << std::endl;
+    os << "  -p, --benchmark       show benchmark result (retrieved strings are suppressed)" << std::endl;
+    os << "  -v, --version         show this version information and exit" << std::endl;
+    os << "  -h, --help            show this help message and exit" << std::endl;
+    os << std::endl;
+    return 0;
+}
+
+int version(std::ostream& os)
+{
+    os << SIMSTRING_NAME " ";
+    os << SIMSTRING_MAJOR_VERSION << "." << SIMSTRING_MINOR_VERSION << " ";
+    os << SIMSTRING_COPYRIGHT << std::endl;
     os << std::endl;
     return 0;
 }
@@ -120,20 +186,22 @@ int build(option& opt, istream_type& is)
     typedef simstring::ngram_generator ngram_generator_type;
     typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
     
-    int n = 0;
-    clock_t clk;
     std::ostream& os = std::cout;
     std::ostream& es = std::cerr;
+
+    // Show the copyright information.
+    version(os);
 
     // Show parameters for database construction.
     os << "Constructing the database" << std::endl;
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
+    os << "Begin/end marks: " << std::boolalpha << opt.be << std::endl;
     os << "Char type: " << typeid(char_type).name() << std::endl;
     os.flush();
 
     // Open the database for construction.
-    clk = std::clock();
+    clock_t clk = std::clock();
     ngram_generator_type gen(opt.ngram_size, opt.be);
     writer_type db(gen, opt.name);
     if (db.fail()) {
@@ -142,6 +210,7 @@ int build(option& opt, istream_type& is)
     }
 
     // Insert every string from STDIN into the database.
+    int n = 0;
     for (;;) {
         // Read a line.
         string_type line;
@@ -175,6 +244,7 @@ int build(option& opt, istream_type& is)
     os << std::endl;
 
     // Report the elaped time for construction.
+    os << "Total number of strings: " << n << std::endl;
     os << "Seconds required: "
         << (std::clock() - clk) / (double)CLOCKS_PER_SEC << std::endl;
     os << std::endl;
@@ -183,94 +253,97 @@ int build(option& opt, istream_type& is)
     return 0;
 }
 
+// widen for strings only with ASCII characters.
+template <class char_type>
+std::basic_string<char_type> widen(const std::string& str)
+{
+    std::basic_string<char_type> dst;
+    std::string::const_iterator it;
+    for (it = str.begin();it != str.end();++it) {
+        dst += static_cast<char_type>(*it);
+    }
+    return dst;
+}
+
 template <class char_type, class istream_type, class ostream_type>
-int interactive(option& opt, istream_type& is, ostream_type& os)
+int retrieve(option& opt, istream_type& is, ostream_type& os)
 {
     typedef std::basic_string<char_type> string_type;
     typedef std::vector<string_type> strings_type;
-    typedef simstring::ngram_generator ngram_generator_type;
     typedef simstring::reader_base<string_type> reader_type;
-    typedef simstring::query::exact<string_type> query_exact_type;
-    typedef simstring::query::cosine<string_type> query_cosine_type;
-    typedef simstring::query::dice<string_type> query_dice_type;
-    typedef simstring::query::jaccard<string_type> query_jaccard_type;
-    typedef simstring::query::overlap<string_type> query_overlap_type;
 
-    reader_type db;
     std::ostream& es = std::cerr;
 
-    db.open(opt.name);
+    // Open the database.
+    reader_type db;
+    if (!db.open(opt.name)) {
+        es << "ERROR: " << db.error() << std::endl;
+        return 1;
+    }
 
-    ngram_generator_type gen(opt.ngram_size, opt.be);
-
+    int num_queries = 0;
+    int num_retrieved = 0;
+    clock_t clk_total = 0;
     for (;;) {
         // Read a line.
         string_type line;
         std::getline(is, line);
         if (is.eof()) {
-            os << std::endl;
             break;
         }
-
-        // The line is a query.
-        strings_type xstrs;
-        clock_t clk = std::clock();
 
         // Issue a query.
-        db.retrieve(line, opt.query_type, opt.threshold, std::back_inserter(xstrs));
+        strings_type xstrs;
+        clock_t clk = std::clock();
+        db.retrieve(
+            line,
+            opt.query_type,
+            opt.threshold,
+            std::back_inserter(xstrs)
+            );
+        clock_t elapsed = (std::clock() - clk);
 
-        /*
-        switch (opt.query_type) {
-        case option::QT_EXACT:
-            db.retrieve(
-                query_exact_type(gen, line),
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_DICE:
-            db.retrieve(
-                query_dice_type(gen, line, opt.threshold),
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_COSINE:
-            db.retrieve(
-                query_cosine_type(gen, line, opt.threshold),
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_JACCARD:
-            db.retrieve(
-                query_jaccard_type(gen, line, opt.threshold),
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_OVERLAP:
-            db.retrieve(
-                query_overlap_type(gen, line, opt.threshold),
-                std::back_inserter(xstrs)
-                );
-            break;
-        }
-        */
+        // Update stats.
+        clk_total += elapsed;
+        num_retrieved += (int)xstrs.size();
+        ++num_queries;
 
-        // Output the query string if necessary.
-        if (opt.echo_back) {
-            os << line << std::endl;
+        // Do not output results when the benchmarking flag is on.
+        if (!opt.benchmark) {
+            // Output the query string if necessary.
+            if (opt.echo_back) {
+                os << line << std::endl;
+            }
+
+            // Output the retrieved strings.
+            typename strings_type::const_iterator it;
+            for (it = xstrs.begin();it != xstrs.end();++it) {
+                os << os.widen('\t') << *it << std::endl;
+            }
+            os.flush();
         }
 
-        // Output the retrieved strings.
-        typename strings_type::const_iterator it;
-        for (it = xstrs.begin();it != xstrs.end();++it) {
-            os << os.widen('\t') << *it << std::endl;
-        }
-        os.flush();
-
+        // Do not output information when the quiet flag is on.
         if (!opt.quiet) {
-            es << xstrs.size() << " strings retrieved (" <<
+            os <<
+                xstrs.size() <<
+                widen<char_type>(" strings retrieved (") <<
                 (std::clock() - clk) / (double)CLOCKS_PER_SEC <<
-                " sec)" << std::endl;
+                widen<char_type>(" sec)") << std::endl;
         }
+    }
+
+    // Output the benchmark information if necessary.
+    if (opt.benchmark) {
+        os <<
+            widen<char_type>("Total number of queries: ") <<
+            num_queries << std::endl;
+        os <<
+            widen<char_type>("Seconds per query: ") <<
+            clk_total / (double)CLOCKS_PER_SEC / num_queries << std::endl;
+        os <<
+            widen<char_type>("Number of retrieved strings per query: ") <<
+            num_retrieved / (double)num_queries << std::endl;
     }
 
     return 0;
@@ -278,25 +351,15 @@ int interactive(option& opt, istream_type& is, ostream_type& os)
 
 int main(int argc, char *argv[])
 {
-    option_parser opt;
-    std::istream& is = std::cin;
-    std::ostream& os = std::cout;
-    std::ostream& es = std::cerr;
-
-    // Show the copyright information.
-    es << SIMSTRING_NAME " ";
-    es << SIMSTRING_MAJOR_VERSION << "." << SIMSTRING_MINOR_VERSION << " ";
-    es << SIMSTRING_COPYRIGHT << std::endl;
-    es << std::endl;
-
     // Parse the command-line options.
+    option_parser opt;
     try { 
         int arg_used = opt.parse(argv, argc);
     } catch (const optparse::unrecognized_option& e) {
-        es << "ERROR: unrecognized option: " << e.what() << std::endl;
+        std::cerr << "ERROR: unrecognized option: " << e.what() << std::endl;
         return 1;
     } catch (const optparse::invalid_value& e) {
-        es << "ERROR: " << e.what() << std::endl;
+        std::cerr << "ERROR: " << e.what() << std::endl;
         return 1;
     }
 
@@ -311,7 +374,9 @@ int main(int argc, char *argv[])
     // Branches for the processing mode.
     switch (opt.mode) {
     case option::MODE_HELP:
-        return usage(os, argv[0]);
+        return usage(std::cout, argv[0]);
+    case option::MODE_VERSION:
+        return version(std::cout);
     case option::MODE_BUILD:
         if (opt.code == option::CC_CHAR) {
             return build<char>(opt, std::cin);
@@ -319,14 +384,15 @@ int main(int argc, char *argv[])
             return build<wchar_t>(opt, std::wcin);
         }
         break;
-    case option::MODE_INTERACTIVE:
+    case option::MODE_RETRIEVE:
         if (opt.code == option::CC_CHAR) {
-            return interactive<char>(opt, std::cin, std::cout);
+            return retrieve<char>(opt, std::cin, std::cout);
         } else if (opt.code == option::CC_WCHAR) {
-            return interactive<wchar_t>(opt, std::wcin, std::wcout);
+            return retrieve<wchar_t>(opt, std::wcin, std::wcout);
         }
         break;
     }
 
+    // An unknown processing mode.
     return 1;
 }
