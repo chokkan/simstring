@@ -13,9 +13,10 @@ class writer
 protected:
     void *m_dbw;
     void *m_gen;
+    bool m_unicode;
 
 public:
-    writer(const char *filename, int n = 3, bool be = false);
+    writer(const char *filename, int n = 3, bool be = false, bool unicode = false);
     virtual ~writer();
     void insert(const char *string);
     void close();
