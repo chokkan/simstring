@@ -47,14 +47,14 @@
 #include <vector>
 
 #include "ngram.h"
-#include "query.h"
+#include "measure.h"
 #include "cdbpp.h"
 #include "memory_mapped_file.h"
 
 #define	SIMSTRING_NAME           "SimString"
 #define	SIMSTRING_COPYRIGHT      "Copyright (c) 2009,2010 Naoaki Okazaki"
 #define	SIMSTRING_MAJOR_VERSION  0
-#define SIMSTRING_MINOR_VERSION  2
+#define SIMSTRING_MINOR_VERSION  3
 #define SIMSTRING_STREAM_VERSION 2
 
 namespace simstring
@@ -463,23 +463,17 @@ protected:
 
 /**
  * A reader for an n-gram database.
- *  @param  string_tmpl             The type of a string.
  *  @param  value_tmpl              The value type.
  *                                  This is required to be an integer type.
  */
 template <
-    class string_tmpl,
     class value_tmpl
 >
 class ngramdb_reader_base
 {
 public:
-    /// The type of a string.
-    typedef string_tmpl string_type;
     /// The type of a SID.
     typedef value_tmpl value_type;
-    /// The type of a character.
-    typedef typename string_type::value_type char_type;
     
 protected:
     /// An inverted list of SIDs.
@@ -613,8 +607,8 @@ public:
      *                      measure.
      *  @param  results     The SIDs that satisfies the overlap join.
      */
-    template <class query_type>
-    void overlapjoin(const query_type& query, results_type& results)
+    template <class measure_type, class query_type>
+    void overlapjoin(const query_type& query, double alpha, results_type& results)
     {
         int i;
         const int qsize = query.size();
@@ -625,8 +619,8 @@ public:
         // Compute the range of n-gram lengths for the candidate strings;
         // in other words, we do not have to search for strings whose n-gram
         // lengths are out of this range.
-        const int xmin = std::max(query.min_size(), 1);
-        const int xmax = std::min(query.max_size(), m_max_size);
+        const int xmin = std::max(measure_type::min_size(query.size(), alpha), 1);
+        const int xmax = std::min(measure_type::max_size(query.size(), alpha), m_max_size);
 
         // Loop for each length in the range.
         for (int xsize = xmin;xsize <= xmax;++xsize) {
@@ -645,7 +639,7 @@ public:
                 size_t vsize;
                 const void *values = tbl.get(
                     it->c_str(),
-                    sizeof(char_type) * it->length(),
+                    sizeof(it->at(0)) * it->length(),
                     &vsize
                     );
                 posts[i].num = (int)(vsize / sizeof(value_type));
@@ -657,7 +651,7 @@ public:
             std::sort(posts.begin(), posts.end());
 
             // The minimum number of n-gram matches required for the query.
-            const int mmin = query.min_match(xsize);
+            const int mmin = measure_type::min_match(qsize, xsize, alpha);
             // A candidate must match to one of n-grams in these queries.
             const int min_queries = qsize - mmin + 1;
 
@@ -759,33 +753,21 @@ protected:
 
 /**
  * A database reader for SimString.
- *  @param  string_tmpl             The type of a string.
  *  @param  ngram_generator_tmpl    The type of an n-gram generator.
  */
-template <
-    class string_tmpl,
-    class ngram_generator_tmpl = ngram_generator
->
 class reader_base
-    : public ngramdb_reader_base<string_tmpl, uint32_t>
+    : public ngramdb_reader_base<uint32_t>
 {
 public:
-    /// The type representing a string.
-    typedef string_tmpl string_type;
-    /// The type representing a character.
-    typedef typename string_type::value_type char_type;
+    /// The type of an n-gram generator.
+    typedef ngram_generator ngram_generator_type;
     /// The type of the base class.
-    typedef ngramdb_reader_base<string_tmpl, uint32_t> base_type;
-
+    typedef ngramdb_reader_base<uint32_t> base_type;
 
 protected:
-    /// The type of an n-gram set
-    typedef std::vector<string_type> ngrams_type;
-
-    /// The type of an n-gram generator.
-    typedef ngram_generator_tmpl ngram_generator_type;
-    /// The n-gram generator.
-    ngram_generator_type m_gen;
+    int m_ngram_unit;
+    bool m_be;
+    int m_char_size;
 
     /// The content of the master file.
     std::vector<char> m_strings;
@@ -812,7 +794,6 @@ public:
      */
     bool open(const std::string& name)
     {
-        uint32_t ngram_unit, be;
         uint32_t num_entries, max_size;
 
         // Open the master file.
@@ -861,17 +842,12 @@ public:
         }
         p += 4;
 
-        // Check the character size.
-        if (sizeof(char_type) != read_uint32(p)) {
-            this->m_error << "Incompatible character type";
-            return false;
-        }
-        p += 4;
-
         // Read the unit of n-grams, begin/end flag.
-        ngram_unit = read_uint32(p);
+        m_char_size = (int)read_uint32(p);
         p += 4;
-        be = read_uint32(p);
+        m_ngram_unit = (int)read_uint32(p);
+        p += 4;
+        m_be = (read_uint32(p) != 0);
         p += 4;
 
         // Read the number of enties.
@@ -880,9 +856,6 @@ public:
 
         // Read the maximum size of strings in the database.
         max_size = read_uint32(p);
-
-        // Initialize the n-gram generator.
-        m_gen.set((int)ngram_unit, be != 0);
 
         base_type::open(name, (int)max_size);
         return true;
@@ -900,63 +873,27 @@ public:
      * Retrieves strings that are similar to the query.
      *  @param  query           The query string.
      *  @param  query_type      The query type.
-     *  @param  threshold       The threshold for approximate string matching.
+     *  @param  alpha           The threshold for approximate string matching.
      *  @param  ins             The insert iterator that receives retrieved
      *                          strings.
      */
-    template <class insert_iterator>
+    template <class measure_type, class string_type, class insert_iterator>
     void retrieve(
         const string_type& query,
-        int query_type,
-        double threshold,
+        double alpha,
         insert_iterator ins
         )
     {
-        switch (query_type) {
-        case QT_EXACT:
-            this->retrieve(
-                simstring::query::exact<string_type>(m_gen, query),
-                ins
-                );
-            break;
-        case QT_DICE:
-            this->retrieve(
-                simstring::query::dice<string_type>(m_gen, query, threshold),
-                ins
-                );
-            break;
-        case QT_COSINE:
-            this->retrieve(
-                simstring::query::cosine<string_type>(m_gen, query, threshold),
-                ins
-                );
-            break;
-        case QT_JACCARD:
-            this->retrieve(
-                simstring::query::jaccard<string_type>(m_gen, query, threshold),
-                ins
-                );
-            break;
-        case QT_OVERLAP:
-            this->retrieve(
-                simstring::query::overlap<string_type>(m_gen, query, threshold),
-                ins
-                );
-            break;
-        }
-    }
+        typedef std::vector<string_type> ngrams_type;
+        typedef typename string_type::value_type char_type;
 
-    /**
-     * Retrieves strings that are similar to the query object.
-     *  @param  query           The query object.
-     *  @param  ins             The insert iterator that receives retrieved
-     *                          strings.
-     */
-    template <class query_type, class insert_iterator>
-    void retrieve(const query_type& query, insert_iterator ins)
-    {
+        ngram_generator_type gen(m_ngram_unit, m_be);
+        ngrams_type ngrams;
+        gen(query, std::back_inserter(ngrams));
+
         typename base_type::results_type results;
-        base_type::overlapjoin(query, results);
+        base_type::overlapjoin<measure_type>(ngrams, alpha, results);
+
         typename base_type::results_type::const_iterator it;
         const char* strings = &m_strings[0];
         for (it = results.begin();it != results.end();++it) {

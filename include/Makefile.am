@@ -7,7 +7,7 @@ simstringinclude_HEADERS = \
 	simstring/memory_mapped_file.h \
 	simstring/memory_mapped_file_posix.h \
 	simstring/ngram.h \
-	simstring/query.h \
+	simstring/measure.h \
 	simstring/simstring.h
 
 EXTRA_DIST = \

@@ -191,6 +191,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\include\simstring\measure.h"
+				>
+			</File>
+			<File
 				RelativePath="..\include\simstring\memory_mapped_file.h"
 				>
 			</File>
@@ -200,10 +204,6 @@
 			</File>
 			<File
 				RelativePath="..\include\simstring\ngram.h"
-				>
-			</File>
-			<File
-				RelativePath="..\include\simstring\query.h"
 				>
 			</File>
 			<File
