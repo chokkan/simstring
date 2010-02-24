@@ -12,16 +12,16 @@ from distutils.core import setup, Extension
 simstring_module = Extension(
     '_simstring',
     sources = ['export_wrap.cpp', 'export.cpp'],
-    include_dirs=['/home/naoaki/projects/dastring/include'],
+    include_dirs=['@INCLUDES@'],
     extra_link_args=['-shared'],
     language='c++',
     )
 
 setup(
-    name = 'simstring',
-    version = '0.1',
+    name = '@PACKAGE@',
+    version = '@VERSION@',
     author = 'Naoaki Okazaki',
-    description = """Python module for simstring""",
+    description = """SimString Python module""",
     ext_modules = [simstring_module],
     py_modules = ["simstring"],
     )
