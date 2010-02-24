@@ -4,6 +4,20 @@
 setup.py file for SWIG example
 """
 
+import sys
+import os.path
+
+def get_rootdir():
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '../..')
+        )
+
+def get_includedir():
+    return os.path.join(get_rootdir(), 'include')
+
+def get_swigdir():
+    return os.path.join(get_rootdir(), 'swig')
+
 import os; os.environ['CC'] = 'g++'; os.environ['CXX'] = 'g++';
 os.environ['CPP'] = 'g++'; os.environ['LDSHARED'] = 'g++'
 
@@ -11,8 +25,11 @@ from distutils.core import setup, Extension
 
 simstring_module = Extension(
     '_simstring',
-    sources = ['export_wrap.cpp', 'export.cpp'],
-    include_dirs=['@INCLUDES@'],
+    sources = [
+        'export_wrap.cpp',
+        os.path.join(get_swigdir(), 'export.cpp')
+        ],
+    include_dirs=[get_includedir(),],
     extra_link_args=['-shared'],
     language='c++',
     )
