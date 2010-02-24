@@ -869,6 +869,11 @@ public:
         base_type::close();
     }
 
+    int char_size() const
+    {
+        return m_char_size;
+    }
+
     /**
      * Retrieves strings that are similar to the query.
      *  @param  query           The query string.

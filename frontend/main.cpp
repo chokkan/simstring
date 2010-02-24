@@ -290,6 +290,15 @@ int retrieve(option& opt, istream_type& is, ostream_type& os)
         return 1;
     }
 
+    // Check the size of characters.
+    if (db.char_size() != sizeof(char_type)) {
+        es << "ERROR: Inconsistent character encoding " <<
+            "(DB:" << db.char_size() << ", " <<
+            "CUR:" << sizeof(char_type) << "): " << std::endl;
+        es << "This problem may be solved by specifying -u (--unicode) option." << std::endl;
+        return 1;
+    }
+
     int num_queries = 0;
     int num_retrieved = 0;
     clock_t clk_total = 0;
