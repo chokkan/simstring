@@ -532,6 +532,10 @@ public:
         if (byteorder != BYTEORDER_CHECK) {
             throw cdbpp_exception("Inconsistent byte order");
         }
+        // Check the version number.
+        if (version != VERSION) {
+            throw cdbpp_exception("Incompatible CDB++ versions");
+        }
         // Check the chunk size.
         if (size < csize) {
             throw cdbpp_exception("The memory image is smaller than a chunk size.");

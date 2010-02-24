@@ -25,12 +25,9 @@ class reader
 {
 protected:
     void *m_dbr;
-    void *m_gen;
 
 public:
-
-public:
-    reader(const char *filename, int n = 3, bool be = false);
+    reader(const char *filename);
     virtual ~reader();
     std::vector<std::string> retrieve(const char *query);
     void close();

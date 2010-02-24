@@ -38,6 +38,7 @@
 #include <locale>
 #include <locale.h>
 #include <string>
+#include <typeinfo>
 #include <vector>
 #include <simstring/simstring.h>
 

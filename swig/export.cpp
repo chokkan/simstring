@@ -62,74 +62,53 @@ void writer::close()
     }
 }
 
-reader::reader(const char *filename, int n, bool be)
-    : m_dbr(NULL), m_gen(NULL), measure(exact), threshold(1.0)
+
+
+reader::reader(const char *filename)
+    : m_dbr(NULL), measure(cosine), threshold(0.7)
 {
-    ngram_generator_type *gen = new ngram_generator_type(n, be);
     reader_type *dbr = new reader_type;
 
     if (!dbr->open(filename)) {
         delete dbr;
-        delete gen;
         throw std::invalid_argument("Failed to open the database");
     }
 
     m_dbr = dbr;
-    m_gen = gen;
 }
 
 reader::~reader()
 {
     this->close();
     delete reinterpret_cast<reader_type*>(m_dbr);
-    delete reinterpret_cast<ngram_generator_type*>(m_gen);
 }
 
 std::vector<std::string> reader::retrieve(const char *query)
 {
-    typedef simstring::query::exact<string_type, ngram_generator_type> query_exact_type;
-    typedef simstring::query::cosine<string_type, ngram_generator_type> query_cosine_type;
-    typedef simstring::query::dice<string_type, ngram_generator_type> query_dice_type;
-    typedef simstring::query::jaccard<string_type, ngram_generator_type> query_jaccard_type;
-    typedef simstring::query::overlap<string_type, ngram_generator_type> query_overlap_type;
-
     reader_type& dbr = *reinterpret_cast<reader_type*>(m_dbr);
-    ngram_generator_type& gen = *reinterpret_cast<ngram_generator_type*>(m_gen);
 
-    std::vector<std::string> ret;
+    // Translate the similarity measure.
+    int qt = -1;
     switch (this->measure) {
     case exact:
-        dbr.retrieve(
-            query_exact_type(gen, query),
-            std::back_inserter(ret)
-            );
+        qt = simstring::QT_EXACT;
         break;
     case dice:
-        dbr.retrieve(
-            query_dice_type(gen, query, this->threshold),
-            std::back_inserter(ret)
-            );
+        qt = simstring::QT_DICE;
         break;
-    case cosine: 
-        dbr.retrieve(
-            query_cosine_type(gen, query, this->threshold),
-            std::back_inserter(ret)
-            );
+    case cosine:
+        qt = simstring::QT_COSINE;
         break;
     case jaccard:
-        dbr.retrieve(
-            query_jaccard_type(gen, query, this->threshold),
-            std::back_inserter(ret)
-            );
+        qt = simstring::QT_JACCARD;
         break;
     case overlap:
-        dbr.retrieve(
-            query_overlap_type(gen, query, this->threshold),
-            std::back_inserter(ret)
-            );
+        qt = simstring::QT_OVERLAP;
         break;
     }
 
+    std::vector<std::string> ret;
+    dbr.retrieve(query, qt, this->threshold, std::back_inserter(ret));
     return ret;
 }
 
