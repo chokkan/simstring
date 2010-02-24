@@ -97,7 +97,7 @@ class option_parser :
         ON_OPTION_WITH_ARG(SHORTOPT('d') || LONGOPT("database"))
             name = arg;
 
-        ON_OPTION(SHORTOPT('w') || LONGOPT("wchar"))
+        ON_OPTION(SHORTOPT('u') || LONGOPT("unicode"))
             code = CC_WCHAR;
 
         ON_OPTION_WITH_ARG(SHORTOPT('n') || LONGOPT("ngram"))
@@ -151,7 +151,7 @@ int usage(std::ostream& os, const char *argv0)
     os << "OPTIONS:" << std::endl;
     os << "  -b, --build           build a database for strings read from STDIN" << std::endl;
     os << "  -d, --database=DB     specify a database file" << std::endl;
-    os << "  -w, --wchar           use wide characters (wchar_t)" << std::endl;
+    os << "  -u, --unicode         use Unicode (wchar_t) for representing characters" << std::endl;
     os << "  -n, --ngram=N         specify the unit of n-grams (DEFAULT=3)" << std::endl;
     os << "  -m, --mark            include marks for begins and ends of strings" << std::endl;
     os << "  -s, --similarity=SIM  specify a similarity measure (DEFAULT='cosine'):" << std::endl;
@@ -197,7 +197,7 @@ int build(option& opt, istream_type& is)
     os << "Database name: " << opt.name << std::endl;
     os << "N-gram length: " << opt.ngram_size << std::endl;
     os << "Begin/end marks: " << std::boolalpha << opt.be << std::endl;
-    os << "Char type: " << typeid(char_type).name() << std::endl;
+    os << "Char type: " << typeid(char_type).name() << " (" << sizeof(char_type) << ")" << std::endl;
     os.flush();
 
     // Open the database for construction.
