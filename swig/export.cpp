@@ -8,7 +8,7 @@
 typedef std::string string_type;
 typedef simstring::ngram_generator ngram_generator_type;
 typedef simstring::writer_base<string_type, ngram_generator_type> writer_type;
-typedef simstring::reader_base<string_type> reader_type;
+typedef simstring::reader_base reader_type;
 
 writer::writer(const char *filename, int n, bool be)
     : m_dbw(NULL), m_gen(NULL)
@@ -86,29 +86,27 @@ reader::~reader()
 std::vector<std::string> reader::retrieve(const char *query)
 {
     reader_type& dbr = *reinterpret_cast<reader_type*>(m_dbr);
+    std::string qstr = query;
 
-    // Translate the similarity measure.
-    int qt = -1;
+    std::vector<std::string> ret;
     switch (this->measure) {
     case exact:
-        qt = simstring::QT_EXACT;
+        dbr.retrieve<simstring::measure::exact>(qstr, this->threshold, std::back_inserter(ret));
         break;
     case dice:
-        qt = simstring::QT_DICE;
+        dbr.retrieve<simstring::measure::dice>(qstr, this->threshold, std::back_inserter(ret));
         break;
     case cosine:
-        qt = simstring::QT_COSINE;
+        dbr.retrieve<simstring::measure::cosine>(qstr, this->threshold, std::back_inserter(ret));
         break;
     case jaccard:
-        qt = simstring::QT_JACCARD;
+        dbr.retrieve<simstring::measure::jaccard>(qstr, this->threshold, std::back_inserter(ret));
         break;
     case overlap:
-        qt = simstring::QT_OVERLAP;
+        dbr.retrieve<simstring::measure::overlap>(qstr, this->threshold, std::back_inserter(ret));
         break;
     }
 
-    std::vector<std::string> ret;
-    dbr.retrieve(query, qt, this->threshold, std::back_inserter(ret));
     return ret;
 }
 
