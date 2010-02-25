@@ -8,8 +8,7 @@ import sys
 import os.path
 
 def get_rootdir():
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 def get_includedir():
     return os.path.join(get_rootdir(), 'include')
 
@@ -24,8 +23,8 @@ from distutils.core import setup, Extension
 simstring_module = Extension(
     '_simstring',
     sources = [
-        'export_wrap_python.cpp',
-        'export.cpp'
+        'export.cpp',
+        'export_wrap.cpp',
         ],
     include_dirs=[get_includedir(),],
     extra_link_args=['-shared'],
