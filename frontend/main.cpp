@@ -59,14 +59,6 @@ public:
         CC_WCHAR,       // wchar_t
     };
 
-    enum {
-        QT_EXACT = 0,
-        QT_DICE,
-        QT_COSINE,
-        QT_JACCARD,
-        QT_OVERLAP,
-    };
-
     int mode;
     int code;
     std::string name;
@@ -86,7 +78,7 @@ public:
         name(""),
         ngram_size(3),
         be(false),
-        measure(QT_COSINE),
+        measure(simstring::QT_COSINE),
         threshold(0.7),
         echo_back(false),
         quiet(false),
@@ -117,15 +109,15 @@ class option_parser :
 
         ON_OPTION_WITH_ARG(SHORTOPT('s') || LONGOPT("similarity"))
             if (std::strcmp(arg, "exact") == 0) {
-                measure = QT_EXACT;
+                measure = simstring::QT_EXACT;
             } else if (std::strcmp(arg, "dice") == 0) {
-                measure = QT_DICE;
+                measure = simstring::QT_DICE;
             } else if (std::strcmp(arg, "cosine") == 0) {
-                measure = QT_COSINE;
+                measure = simstring::QT_COSINE;
             } else if (std::strcmp(arg, "jaccard") == 0) {
-                measure = QT_JACCARD;
+                measure = simstring::QT_JACCARD;
             } else if (std::strcmp(arg, "overlap") == 0) {
-                measure = QT_OVERLAP;
+                measure = simstring::QT_OVERLAP;
             }
 
         ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("threshold"))
@@ -313,43 +305,7 @@ int retrieve(option& opt, istream_type& is, ostream_type& os)
         // Issue a query.
         strings_type xstrs;
         clock_t clk = std::clock();
-        switch (opt.measure) {
-        case option::QT_EXACT:
-            db.retrieve<simstring::measure::exact>(
-                line,
-                opt.threshold,
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_DICE:
-            db.retrieve<simstring::measure::dice>(
-                line,
-                opt.threshold,
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_COSINE:
-            db.retrieve<simstring::measure::cosine>(
-                line,
-                opt.threshold,
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_JACCARD:
-            db.retrieve<simstring::measure::jaccard>(
-                line,
-                opt.threshold,
-                std::back_inserter(xstrs)
-                );
-            break;
-        case option::QT_OVERLAP:
-            db.retrieve<simstring::measure::overlap>(
-                line,
-                opt.threshold,
-                std::back_inserter(xstrs)
-                );
-            break;
-        }
+        db.retrieve(line, opt.measure, opt.threshold, std::back_inserter(xstrs));
         clock_t elapsed = (std::clock() - clk);
 
         // Update stats.

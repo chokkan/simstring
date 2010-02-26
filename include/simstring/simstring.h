@@ -877,7 +877,42 @@ public:
     /**
      * Retrieves strings that are similar to the query.
      *  @param  query           The query string.
-     *  @param  query_type      The query type.
+     *  @param  measure         The similarity measure.
+     *  @param  alpha           The threshold for approximate string matching.
+     *  @param  ins             The insert iterator that receives retrieved
+     *                          strings.
+     */
+    template <class string_type, class insert_iterator>
+    void retrieve(
+        const string_type& query,
+        int measure,
+        double alpha,
+        insert_iterator ins
+        )
+    {
+        switch (measure) {
+        case QT_EXACT:
+            this->retrieve<simstring::measure::exact>(query, alpha, ins);
+            break;
+        case QT_DICE:
+            this->retrieve<simstring::measure::dice>(query, alpha, ins);
+            break;
+        case QT_COSINE:
+            this->retrieve<simstring::measure::cosine>(query, alpha, ins);
+            break;
+        case QT_JACCARD:
+            this->retrieve<simstring::measure::jaccard>(query, alpha, ins);
+            break;
+        case QT_OVERLAP:
+            this->retrieve<simstring::measure::overlap>(query, alpha, ins);
+            break;
+        }
+    }
+
+    /**
+     * Retrieves strings that are similar to the query.
+     *  @param  measure_type    The similarity measure.
+     *  @param  query           The query string.
      *  @param  alpha           The threshold for approximate string matching.
      *  @param  ins             The insert iterator that receives retrieved
      *                          strings.
