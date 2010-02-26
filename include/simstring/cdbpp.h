@@ -54,7 +54,7 @@ namespace cdbpp
 // Global constants.
 enum {
     // Version number.
-    VERSION = 1,
+    CDBPP_VERSION = 1,
     // The number of hash tables.
     NUM_TABLES = 256,
     // A constant for byte-order checking.
@@ -311,7 +311,7 @@ protected:
         char chunkid[4] = {'C','D','B','+'};
         m_os.write(chunkid, 4);
         write_uint32(offset - m_begin);
-        write_uint32(VERSION);
+        write_uint32(CDBPP_VERSION);
         write_uint32(BYTEORDER_CHECK);
 
         // Write references to hash tables. At this moment, dbw->cur points
@@ -533,7 +533,7 @@ public:
             throw cdbpp_exception("Inconsistent byte order");
         }
         // Check the version number.
-        if (version != VERSION) {
+        if (version != CDBPP_VERSION) {
             throw cdbpp_exception("Incompatible CDB++ versions");
         }
         // Check the chunk size.
