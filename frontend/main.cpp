@@ -78,7 +78,7 @@ public:
         name(""),
         ngram_size(3),
         be(false),
-        measure(simstring::QT_COSINE),
+        measure(simstring::cosine),
         threshold(0.7),
         echo_back(false),
         quiet(false),
@@ -109,15 +109,15 @@ class option_parser :
 
         ON_OPTION_WITH_ARG(SHORTOPT('s') || LONGOPT("similarity"))
             if (std::strcmp(arg, "exact") == 0) {
-                measure = simstring::QT_EXACT;
+                measure = simstring::exact;
             } else if (std::strcmp(arg, "dice") == 0) {
-                measure = simstring::QT_DICE;
+                measure = simstring::dice;
             } else if (std::strcmp(arg, "cosine") == 0) {
-                measure = simstring::QT_COSINE;
+                measure = simstring::cosine;
             } else if (std::strcmp(arg, "jaccard") == 0) {
-                measure = simstring::QT_JACCARD;
+                measure = simstring::jaccard;
             } else if (std::strcmp(arg, "overlap") == 0) {
-                measure = simstring::QT_OVERLAP;
+                measure = simstring::overlap;
             }
 
         ON_OPTION_WITH_ARG(SHORTOPT('t') || LONGOPT("threshold"))
@@ -271,7 +271,7 @@ int retrieve(option& opt, istream_type& is, ostream_type& os)
 {
     typedef std::basic_string<char_type> string_type;
     typedef std::vector<string_type> strings_type;
-    typedef simstring::reader_base reader_type;
+    typedef simstring::reader reader_type;
 
     std::ostream& es = std::cerr;
 

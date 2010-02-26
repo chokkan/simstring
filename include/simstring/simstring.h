@@ -69,15 +69,15 @@ enum {
  */
 enum {
     /// Exact match.
-    QT_EXACT = 0,
+    exact = 0,
     /// Approximate string matching with dice coefficient.
-    QT_DICE,
+    dice,
     /// Approximate string matching with cosine coefficient.
-    QT_COSINE,
+    cosine,
     /// Approximate string matching with jaccard coefficient.
-    QT_JACCARD,
+    jaccard,
     /// Approximate string matching with overlap coefficient.
-    QT_OVERLAP,
+    overlap,
 };
 
 
@@ -288,7 +288,7 @@ protected:
  */
 template <
     class string_tmpl,
-    class ngram_generator_tmpl
+    class ngram_generator_tmpl = ngram_generator
 >
 class writer_base :
     public ngramdb_writer_base<string_tmpl, uint32_t, ngram_generator_tmpl>
@@ -755,7 +755,7 @@ protected:
  * A database reader for SimString.
  *  @param  ngram_generator_tmpl    The type of an n-gram generator.
  */
-class reader_base
+class reader
     : public ngramdb_reader_base<uint32_t>
 {
 public:
@@ -776,14 +776,14 @@ public:
     /**
      * Constructs an object.
      */
-    reader_base()
+    reader()
     {
     }
 
     /**
      * Destructs an object.
      */
-    virtual ~reader_base()
+    virtual ~reader()
     {
         close();
     }
@@ -891,19 +891,19 @@ public:
         )
     {
         switch (measure) {
-        case QT_EXACT:
+        case exact:
             this->retrieve<simstring::measure::exact>(query, alpha, ins);
             break;
-        case QT_DICE:
+        case dice:
             this->retrieve<simstring::measure::dice>(query, alpha, ins);
             break;
-        case QT_COSINE:
+        case cosine:
             this->retrieve<simstring::measure::cosine>(query, alpha, ins);
             break;
-        case QT_JACCARD:
+        case jaccard:
             this->retrieve<simstring::measure::jaccard>(query, alpha, ins);
             break;
-        case QT_OVERLAP:
+        case overlap:
             this->retrieve<simstring::measure::overlap>(query, alpha, ins);
             break;
         }
