@@ -2,24 +2,17 @@
 # -*- coding:utf-8 -*-
 
 """
-In order to use similarity 
-represent character n-grams in Unicode as representation, we need to:
-1) set the unicode flag to True
-2) use 8-bit strings encoded in UTF-8
+A Unicode sample.
 
-When a unicode flag is set to True, the 'simstring' module assumes
-
-     
-Because this source code is written in UTF-8 (see the encoding
-declaration), we can use 8-bit strings (that are also encoded in
-UTF-8) as queries.
-
+We assume that the source code is written in UTF-8 encoding (see the
+encoding declaration in line 2). We can use 8-bit strings as they are
+with SimString.
 """
 
 import simstring
 
-# Open a SimString database for writing (with unicode mode enabled).
-db = simstring.writer('sample_unicode.db', 3, True, True)
+# Open a SimString database for writing with Unicode mode.
+db = simstring.writer('sample_unicode.db', 3, False, True)
 
 # Write a string, and close the database.
 db.insert('スパゲティ')
@@ -33,9 +26,9 @@ db = simstring.reader('sample_unicode.db')
 db.measure = simstring.cosine
 db.threshold = 0.6
 
-# Use an 8-bit string in UTF-8 encoding.
-print ' '.join(db.retrieve('スパゲッティ'))
+# Use an 8-bit string encoded in UTF-8.
+print ' '.join(db.retrieve('スパゲティー'))
 
-# Convert a Unicode object into an 8-bit UTF-8 string.
+# Convert a Unicode object into an UTF-8 query string.
 print ' '.join(db.retrieve(u'スパゲティー'.encode('utf-8')))
 

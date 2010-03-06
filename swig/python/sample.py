@@ -8,6 +8,7 @@ db.insert('Barack Hussein Obama II')
 db.insert('James Gordon Brown')
 db.close()
 
+
 # Open the database for reading.
 db = simstring.reader('sample.db')
 
@@ -22,4 +23,3 @@ print(db.retrieve('Obama'))             # Too dissimilar!
 db.measure = simstring.overlap
 db.threshold = 1.
 print(db.retrieve('Obama'))             # OK.
-

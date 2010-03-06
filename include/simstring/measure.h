@@ -38,6 +38,9 @@
 
 namespace simstring { namespace measure {
 
+/**
+ * This class implements traits of exact matching.
+ */
 struct exact
 {
     inline static int min_size(int qsize, double alpha)
@@ -56,6 +59,9 @@ struct exact
     }
 };
 
+/**
+ * This class implements traits of dice coefficient.
+ */
 struct dice
 {
     inline static int min_size(int qsize, double alpha)
@@ -74,6 +80,9 @@ struct dice
     }
 };
 
+/**
+ * This class implements traits of cosine coefficient.
+ */
 struct cosine
 {
     inline static int min_size(int qsize, double alpha)
@@ -92,6 +101,9 @@ struct cosine
     }
 };
 
+/**
+ * This class implements traits of Jaccard coefficient.
+ */
 struct jaccard
 {
     inline static int min_size(int qsize, double alpha)
@@ -110,6 +122,9 @@ struct jaccard
     }
 };
 
+/**
+ * This class implements traits of overlap coefficient.
+ */
 struct overlap
 {
     inline static int min_size(int qsize, double alpha)

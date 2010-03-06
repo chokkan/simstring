@@ -8,6 +8,7 @@ db.insert('Barack Hussein Obama II')
 db.insert('James Gordon Brown')
 db.close()
 
+
 # Open the database for reading.
 db = Simstring::Reader.new('sample.db')
 
@@ -22,4 +23,3 @@ p(db.retrieve('Obama'))             # Too dissimilar!
 db.measure = Simstring::Overlap
 db.threshold = 1
 p(db.retrieve('Obama'))             # OK.
-

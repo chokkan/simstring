@@ -81,6 +81,9 @@ enum {
 };
 
 
+
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
+
 /**
  * A writer for an n-gram database.
  *  @param  string_tmpl             The type of a string.
@@ -279,6 +282,8 @@ protected:
     }
 };
 
+#endif /* DOXYGEN_SHOULD_SKIP_THIS */
+
 
 
 /**
@@ -460,6 +465,7 @@ protected:
 };
 
 
+#ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * A reader for an n-gram database.
@@ -749,6 +755,7 @@ protected:
     }
 };
 
+#endif /* DOXYGEN_SHOULD_SKIP_THIS */
 
 
 /**
