@@ -2,7 +2,8 @@
 
 bin_PROGRAMS = simstring
 #man_MANS = simstring.1
-#EXTRA_DIST = ${man_MANS}
+EXTRA_DIST = \
+	frontend.vcproj
 
 simstring_SOURCES = \
 	optparse.h \
