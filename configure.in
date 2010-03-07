@@ -28,7 +28,7 @@ AC_MINIX
 dnl ------------------------------------------------------------------
 dnl Initialization for automake
 dnl ------------------------------------------------------------------
-AM_INIT_AUTOMAKE(simstring, 0.3)
+AM_INIT_AUTOMAKE(simstring, 1.0)
 AC_CONFIG_HEADERS(config.h)
 AM_MAINTAINER_MODE
 

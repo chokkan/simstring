@@ -8,7 +8,7 @@ doc_DATA = README INSTALL COPYING COPYING AUTHORS ChangeLog
 EXTRA_DIST = \
 	autogen.sh \
 	win32/stdint.h \
-	dastring.sln
+	simstring.sln
 
 #AUTOMAKE_OPTIONS = foreign
 #ACLOCAL_AMFLAGS = -I m4
