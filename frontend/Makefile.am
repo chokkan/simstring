@@ -1,10 +1,10 @@
 # $Id$
 
-bin_PROGRAMS = dastring
-#man_MANS = dastring.1
+bin_PROGRAMS = simstring
+#man_MANS = simstring.1
 #EXTRA_DIST = ${man_MANS}
 
-dastring_SOURCES = \
+simstring_SOURCES = \
 	optparse.h \
 	main.cpp
 

@@ -51,7 +51,7 @@ bool iconv_convert(iconv_t cd, const source_type& src, destination_type& dst)
 typedef simstring::ngram_generator ngram_generator_type;
 typedef simstring::writer_base<std::string, ngram_generator_type> writer_type;
 typedef simstring::writer_base<std::wstring, ngram_generator_type> uwriter_type;
-typedef simstring::reader_base reader_type;
+typedef simstring::reader reader_type;
 
 writer::writer(const char *filename, int n, bool be, bool unicode)
     : m_dbw(NULL), m_gen(NULL), m_unicode(unicode)

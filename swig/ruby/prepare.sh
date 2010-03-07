@@ -1,7 +1,13 @@
 #!/bin/sh
+# $Id:$
 
 ln -s ../export.cpp
 ln -s ../export.h
 ln -s ../export.i
-swig -c++ -ruby -o export_wrap.cpp export.i
+
+if [ "$1" = "--swig" ];
+then
+    swig -c++ -ruby -o export_wrap.cpp export.i
+fi
+
 

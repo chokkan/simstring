@@ -1,6 +1,6 @@
 # $Id$
 
-SUBDIRS = include frontend
+SUBDIRS = include frontend sample swig
 
 docdir = $(prefix)/share/doc/@PACKAGE@
 doc_DATA = README INSTALL COPYING COPYING AUTHORS ChangeLog
