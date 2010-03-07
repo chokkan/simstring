@@ -7,6 +7,7 @@ EXTRA_DIST = \
 	python/prepare.sh \
 	python/setup.py.in \
 	python/export_wrap.cpp \
+	python/simstring.py \
 	python/sample.py \
 	python/sample_unicode.py \
 	ruby/prepare.sh \
