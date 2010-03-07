@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     std::wcout.imbue(std::locale(""));
 
     // Open a SimString database for writing (with std::wstring).
-    simstring::ngram_generator gen(3, true);
+    simstring::ngram_generator gen(3, false);
     simstring::writer_base<std::wstring> dbw(gen, "sample_unicode.db");
     dbw.insert(L"スパゲティ");
     dbw.close();
@@ -38,9 +38,7 @@ int main(int argc, char *argv[])
     dbr.open("sample_unicode.db");
 
     // Output similar strings from Unicode queries.
-    retrieve(dbr, L"スパゲッティ", simstring::cosine, 0.6);
     retrieve(dbr, L"スパゲティー", simstring::cosine, 0.6);
 
     return 0;
 }
-

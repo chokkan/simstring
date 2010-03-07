@@ -39,7 +39,7 @@
 namespace simstring { namespace measure {
 
 /**
- * This class implements traits of exact matching.
+ * This class implements the traits of exact matching.
  */
 struct exact
 {
@@ -60,7 +60,7 @@ struct exact
 };
 
 /**
- * This class implements traits of dice coefficient.
+ * This class implements the traits of dice coefficient.
  */
 struct dice
 {
@@ -81,7 +81,7 @@ struct dice
 };
 
 /**
- * This class implements traits of cosine coefficient.
+ * This class implements the traits of cosine coefficient.
  */
 struct cosine
 {
@@ -102,7 +102,7 @@ struct cosine
 };
 
 /**
- * This class implements traits of Jaccard coefficient.
+ * This class implements the traits of Jaccard coefficient.
  */
 struct jaccard
 {
@@ -123,7 +123,7 @@ struct jaccard
 };
 
 /**
- * This class implements traits of overlap coefficient.
+ * This class implements the traits of overlap coefficient.
  */
 struct overlap
 {

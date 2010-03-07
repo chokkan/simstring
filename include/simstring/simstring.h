@@ -57,6 +57,13 @@
 #define SIMSTRING_MINOR_VERSION  3
 #define SIMSTRING_STREAM_VERSION 2
 
+/** 
+ * \addtogroup api SimString C++ API
+ * @{
+ *
+ *  The SimString C++ API.
+ */
+
 namespace simstring
 {
 
@@ -82,10 +89,17 @@ enum {
 
 
 
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
-
 /**
  * A writer for an n-gram database.
+ *  This template class builds an n-gram database. The first template
+ *  argument (string_tmpl) specifies the type of a key (string), the second
+ *  template argument (value_tmpl) specifies the type of a value associated
+ *  with a key, and the third template argument (ngram_generator_tmpl)
+ *  customizes generation of feature sets (n-grams) from keys.
+ *
+ *  This class is inherited by writer_base, which adds the functionality of
+ *  managing a master string table (list of strings).
+ *
  *  @param  string_tmpl             The type of a string.
  *  @param  value_tmpl              The value type.
  *                                  This is required to be an integer type.
@@ -107,6 +121,8 @@ public:
     typedef ngram_generator_tmpl ngram_generator_type;
     /// The type representing a character.
     typedef typename string_type::value_type char_type;
+
+protected:
     /// The type of an array of n-grams.
     typedef std::vector<string_type> ngrams_type;
     /// The vector type of values associated with an n-gram.
@@ -229,6 +245,8 @@ public:
     /**
      * Stores the n-gram database to files.
      *  @param  name        The prefix of file names.
+     *  @return bool        \c true if the database is successfully stored,
+     *                      \c false otherwise.
      */
     bool store(const std::string& base)
     {
@@ -282,12 +300,19 @@ protected:
     }
 };
 
-#endif /* DOXYGEN_SHOULD_SKIP_THIS */
-
 
 
 /**
- * A writer for simstring database.
+ * A SimString database writer.
+ *  This template class builds a SimString database. The first template
+ *  argument (string_tmpl) specifies the type of a character, and the second
+ *  template argument (ngram_generator_tmpl) customizes generation of feature
+ *  sets (n-grams) from strings.
+ *
+ *  Inheriting the base class ngramdb_writer_base that builds indices from
+ *  n-grams to string IDs, this class maintains associations between strings
+ *  and string IDs.
+ *
  *  @param  string_tmpl             The type of a string.
  *  @param  ngram_generator_tmpl    The type of an n-gram generator.
  */
@@ -307,7 +332,7 @@ public:
     typedef ngram_generator_tmpl ngram_generator_type;
     /// The type representing a character.
     typedef typename string_type::value_type char_type;
-    /// The type of the base class.
+    // The type of the base class.
     typedef ngramdb_writer_base<string_tmpl, uint32_t, ngram_generator_tmpl> base_type;
 
 protected:
@@ -320,8 +345,8 @@ protected:
 
 public:
     /**
-     * Constructs an object.
-     *  @param  gen             The n-gram generator.
+     * Constructs a writer object.
+     *  @param  gen         The n-gram generator used by this writer.
      */
     writer_base(const ngram_generator_type& gen)
         : base_type(gen), m_num_entries(0)
@@ -329,9 +354,9 @@ public:
     }
 
     /**
-     * Constructs an object by opening a database.
-     *  @param  gen             The n-gram generator.
-     *  @param  name            The name of the database.
+     * Constructs a writer object by opening a database.
+     *  @param  gen         The n-gram generator used by this writer.
+     *  @param  name        The name of the database.
      */
     writer_base(
         const ngram_generator_type& gen,
@@ -343,7 +368,7 @@ public:
     }
 
     /**
-     * Destructs an object.
+     * Destructs a writer object.
      */
     virtual ~writer_base()
     {
@@ -352,9 +377,9 @@ public:
 
     /**
      * Opens a database.
-     *  @param  name            The name of the database.
-     *  @return bool            \c true if the database is successfully opened,
-     *                          \c false otherwise.
+     *  @param  name        The name of the database.
+     *  @return bool        \c true if the database is successfully opened,
+     *                      \c false otherwise.
      */
     bool open(const std::string& name)
     {
@@ -379,9 +404,9 @@ public:
 
     /**
      * Closes the database.
-     *  @param  name            The name of the database.
-     *  @return bool            \c true if the database is successfully opened,
-     *                          \c false otherwise.
+     *  @param  name        The name of the database.
+     *  @return bool        \c true if the database is successfully opened,
+     *                      \c false otherwise.
      */
     bool close()
     {
@@ -406,15 +431,17 @@ public:
 
     /**
      * Inserts a string to the database.
-     *  @param  key         The string to be inserted.
+     *  @param  str         The string to be inserted.
+     *  @return bool        \c true if the string is successfully inserted,
+     *                      \c false otherwise.
      */
-    bool insert(const string_type& key)
+    bool insert(const string_type& str)
     {
         // This will be the offset address to access the key string.
         value_type off = (value_type)(std::streamoff)m_ofs.tellp();
 
         // Write the key string to the master file.
-        m_ofs.write(reinterpret_cast<const char*>(key.c_str()), sizeof(char_type) * (key.length()+1));
+        m_ofs.write(reinterpret_cast<const char*>(str.c_str()), sizeof(char_type) * (str.length()+1));
         if (m_ofs.fail()) {
             this->m_error << "Failed to write a string to the master file.";
             return false;
@@ -422,7 +449,7 @@ public:
         ++m_num_entries;
 
         // Insert the n-grams of the key string to the database.
-        return base_type::insert(key, off);
+        return base_type::insert(str, off);
     }
 
 protected:
@@ -465,7 +492,6 @@ protected:
 };
 
 
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 /**
  * A reader for an n-gram database.
@@ -478,11 +504,11 @@ template <
 class ngramdb_reader_base
 {
 public:
-    /// The type of a SID.
+    /// The type of a value.
     typedef value_tmpl value_type;
     
 protected:
-    /// An inverted list of SIDs.
+    // An inverted list of SIDs.
     struct inverted_list_type
     {
         int num;
@@ -496,57 +522,52 @@ protected:
             return (x.num < y.num);
         }
     };
-    /// An array of inverted lists.
+    // An array of inverted lists.
     typedef std::vector<inverted_list_type> inverted_lists_type;
 
-    /// A hash table that retrieves SIDs from n-grams.
+    // A hash table that retrieves SIDs from n-grams.
     typedef cdbpp::cdbpp hashtbl_type;
 
-    /// An index containing strings of the same size.
+    // An index containing strings of the same size.
     struct index_type
     {
-        /// The memory image of the database.
+        // The memory image of the database.
         memory_mapped_file  image;
-        /// The index.
+        // The index.
         hashtbl_type        table;
     };
 
-    /// Indices with different sizes of strings.
+    // Indices with different sizes of strings.
     typedef std::vector<index_type> indices_type;
 
-    /// A candidate string of retrieved results.
+    // A candidate string of retrieved results.
     struct candidate_type
     {
-        /// The SID.
+        // The SID.
         value_type  value;
-        /// The overlap count (frequency of the SID in the inverted lists).
+        // The overlap count (frequency of the SID in the inverted lists).
         int         num;
 
-        /**
-         * Constructs a candidate.
-         *  @param  v       The SID.
-         *  @param  n       The overlap count.
-         */
         candidate_type(value_type v, int n)
             : value(v), num(n)
         {
         }
     };
 
-    /// An array of candidates.
+    // An array of candidates.
     typedef std::vector<candidate_type> candidates_type;
 
-    /// An array of SIDs retrieved.
+    // An array of SIDs retrieved.
     typedef std::vector<value_type> results_type;
 
 protected:
-    /// The array of the indices.
+    // The array of the indices.
     indices_type m_indices;
-    /// The maximum size of strings in the database.
+    // The maximum size of strings in the database.
     int m_max_size;
-    /// The database name (base name of indices).
+    // The database name (base name of indices).
     std::string m_name;
-    /// The error message.
+    // The error message.
     std::stringstream m_error;
 
 
@@ -584,7 +605,7 @@ public:
     }
 
     /**
-     * Opens an database.
+     * Opens an n-gram database.
      *  @param  name        The name of the database.
      *  @param  max_size    The maximum size of the strings.
      */
@@ -597,7 +618,7 @@ public:
     }
 
     /**
-     * Closes an database.
+     * Closes an n-gram database.
      */
     void close()
     {
@@ -755,12 +776,15 @@ protected:
     }
 };
 
-#endif /* DOXYGEN_SHOULD_SKIP_THIS */
 
 
 /**
- * A database reader for SimString.
- *  @param  ngram_generator_tmpl    The type of an n-gram generator.
+ * A SimString database reader.
+ *  This template class retrieves string from a SimString database.
+ *
+ *  Inheriting the base class ngramdb_reader_base that retrieves string IDs
+ *  from a query feature set, this class manages the master string table,
+ *  which maintains associations between strings and string IDs.
  */
 class reader
     : public ngramdb_reader_base<uint32_t>
@@ -797,7 +821,9 @@ public:
 
     /**
      * Opens a SimString database.
-     *  @param  name            The name of the SimString database.
+     *  @param  name        The name of the SimString database.
+     *  @return bool        \c true if the database is successfully opened,
+     *                      \c false otherwise.
      */
     bool open(const std::string& name)
     {
@@ -888,6 +914,8 @@ public:
      *  @param  alpha           The threshold for approximate string matching.
      *  @param  ins             The insert iterator that receives retrieved
      *                          strings.
+     *  @see    ::simstring::exact, ::simstring::dice, ::simstring::cosine,
+     *          ::simstring::jaccard, ::simstring::overlap
      */
     template <class string_type, class insert_iterator>
     void retrieve(
@@ -923,6 +951,9 @@ public:
      *  @param  alpha           The threshold for approximate string matching.
      *  @param  ins             The insert iterator that receives retrieved
      *                          strings.
+     *  @see    ::simstring::measure::exact, ::simstring::measure::dice,
+     *          ::simstring::measure::cosine, ::simstring::measure::jaccard,
+     *          ::simstring::measure::overlap
      */
     template <class measure_type, class string_type, class insert_iterator>
     void retrieve(
@@ -958,5 +989,26 @@ protected:
 };
 
 };
+
+/** @} */
+
+/**
+@mainpage SimString - A fast and efficient implementation for approximate string matching
+
+@section documentation Documentation
+
+- @ref api "SimString C++ API"
+
+@section sample Sample Programs
+
+A basic sample.
+
+@include sample.cpp
+
+A Unicode sample.
+
+@include sample_unicode.cpp
+
+*/
 
 #endif/*__SIMSTRING_H__*/
