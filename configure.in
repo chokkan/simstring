@@ -76,7 +76,7 @@ AC_ARG_ENABLE(
 if test "x$enable_debug" = "xyes"; then
    CXXFLAGS="-DDEBUG -O -g ${CXXFLAGS}"
 else
-   CXXFLAGS="-O3 -ffast-math ${CXXFLAGS}"
+   CXXFLAGS="-O3 ${CXXFLAGS}"
 fi
 
 dnl ------------------------------------------------------------------
