@@ -7,5 +7,5 @@ ln -s ../export.i
 
 if [ "$1" = "--swig" ];
 then
-    perl Makefile.PL
+    swig -c++ -perl -o export_wrap.cpp export.i
 fi

@@ -3,10 +3,6 @@ use strict;
 use warnings;
 use ExtUtils::MakeMaker;
 
-BEGIN{
-  system("swig -c++ -perl -o export_wrap.cpp export.i");
-}
-
 WriteMakefile(
   'CC' => 'g++',
   'LD' => 'g++',
