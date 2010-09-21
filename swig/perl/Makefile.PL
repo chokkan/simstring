@@ -1,9 +1,18 @@
+use 5.008;
+use strict;
+use warnings;
 use ExtUtils::MakeMaker;
-WriteMakefile(
-    'NAME' => 'simstring',      # Name of package
-    'CC' => 'g++',
-    'LD' => 'g++',
-    'INC' => '-I../../include', # Include dirs
-    'OBJECT' => 'export.o export_wrap.o'  # Object files
-    );
 
+BEGIN{
+  system("swig -c++ -perl -o export_wrap.cpp export.i");
+}
+
+WriteMakefile(
+  'CC' => 'g++',
+  'LD' => 'g++',
+  'NAME' => 'simstring',
+  'VERSION' => '0.01',
+  'OBJECT' => 'export.o export_wrap.o',
+  'OPTIMIZE' => '-O2',
+  'INC' => '-I../../include',
+);
