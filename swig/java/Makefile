@@ -3,7 +3,7 @@
 #
 all:
 	g++ -fPIC -c export.cpp -I../../include
-	g++ -fPIC -c export_wrap.cxx
+	g++ -fPIC -c export_wrap.cpp
 	g++ -shared export.o export_wrap.o -o libSimString.so
 
 sample:
@@ -11,7 +11,7 @@ sample:
 	javac Sample.java
 
 clean:
-	rm -rf *.o *.so *.cxx *.class export.* simstring
+	rm -rf *.o *.so *.cpp *.class export.* simstring
 
 purge:
-	rm -rf *.o *.so *.cxx export.* simstring
+	rm -rf *.o *.so *.cpp export.* simstring
