@@ -6,8 +6,8 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
   'CC' => 'g++',
   'LD' => 'g++',
-  'NAME' => 'simstring',
-  'VERSION' => '0.01',
+  'NAME' => '@PACKAGE@',
+  'VERSION' => '@VERSION@',
   'OBJECT' => 'export.o export_wrap.o',
   'OPTIMIZE' => '-O2',
   'INC' => '-I../../include',

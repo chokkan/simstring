@@ -112,5 +112,5 @@ AC_SUBST(INCLUDES)
 dnl ------------------------------------------------------------------
 dnl Output the configure results.
 dnl ------------------------------------------------------------------
-AC_CONFIG_FILES(Makefile include/Makefile frontend/Makefile sample/Makefile swig/Makefile swig/python/setup.py swig/ruby/extconf.rb)
+AC_CONFIG_FILES(Makefile include/Makefile frontend/Makefile sample/Makefile swig/Makefile swig/python/setup.py swig/ruby/extconf.rb swig/perl/Makefile.PL)
 AC_OUTPUT
