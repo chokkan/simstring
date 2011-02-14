@@ -211,7 +211,7 @@ public:
      */
     builder_base(std::ofstream& os) : m_os(os)
     {
-        m_begin = m_os.tellp();
+        m_begin = (uint32_t)m_os.tellp();
         m_cur = get_data_begin();
         m_os.seekp(m_begin + m_cur);
     }

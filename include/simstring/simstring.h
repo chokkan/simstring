@@ -635,7 +635,7 @@ public:
      *  @param  results     The SIDs that satisfies the overlap join.
      */
     template <class measure_type, class query_type>
-    void overlapjoin(const query_type& query, double alpha, results_type& results)
+    bool overlapjoin(const query_type& query, double alpha, results_type& results, bool check)
     {
         int i;
         const int qsize = query.size();
@@ -727,6 +727,9 @@ public:
 
                     if (mmin <= num) {
                         // This candidate has sufficient matches.
+                        if (check) {
+                            return true;
+                        }
                         results.push_back(itc->value);
                     } else if (num + (qsize - i - 1) >= mmin) {
                         // This candidate still has the chance.
@@ -746,11 +749,16 @@ public:
                 typename candidates_type::const_iterator itc;
                 for (itc = cands.begin();itc != cands.end();++itc) {
                     if (mmin <= itc->num) {
+                        if (check) {
+                            return true;
+                        }
                         results.push_back(itc->value);
                     }
                 }
             }
         }
+
+        return !results.empty();
     }
 
 protected:
@@ -970,7 +978,7 @@ public:
         gen(query, std::back_inserter(ngrams));
 
         typename base_type::results_type results;
-        base_type::overlapjoin<measure_type>(ngrams, alpha, results);
+        base_type::overlapjoin<measure_type>(ngrams, alpha, results, false);
 
         typename base_type::results_type::const_iterator it;
         const char* strings = &m_strings[0];
@@ -980,6 +988,48 @@ public:
         }
     }
 
+    template <class string_type>
+    void check(
+        const string_type& query,
+        int measure,
+        double alpha
+        )
+    {
+        switch (measure) {
+        case exact:
+            this->check<simstring::measure::exact>(query, alpha);
+            break;
+        case dice:
+            this->check<simstring::measure::dice>(query, alpha);
+            break;
+        case cosine:
+            this->check<simstring::measure::cosine>(query, alpha);
+            break;
+        case jaccard:
+            this->check<simstring::measure::jaccard>(query, alpha);
+            break;
+        case overlap:
+            this->check<simstring::measure::overlap>(query, alpha);
+            break;
+        }
+    }
+
+    template <class measure_type, class string_type>
+    bool check(
+        const string_type& query,
+        double alpha
+        )
+    {
+        typedef std::vector<string_type> ngrams_type;
+        typedef typename string_type::value_type char_type;
+
+        ngram_generator_type gen(m_ngram_unit, m_be);
+        ngrams_type ngrams;
+        gen(query, std::back_inserter(ngrams));
+
+        typename base_type::results_type results;
+        return base_type::overlapjoin<measure_type>(ngrams, alpha, results, true);
+    }
 
 protected:
     inline uint32_t read_uint32(const char* p) const

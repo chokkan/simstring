@@ -32,18 +32,35 @@ bool iconv_convert(iconv_t cd, const source_type& src, destination_type& dst)
     size_t inbytesleft = sizeof(source_char_type) * src.length();
     while (inbytesleft > 0) {
         char buffer[1024];
-	char *p = buffer;
-	size_t outbytesleft = 1024;
-	int ret = iconv(cd, (ICONV_CONST char **)&inbuf, &inbytesleft, &p, &outbytesleft);
-	if (ret == -1 && errno != E2BIG) {
-	    return false;
-	}
-	dst.append(
-	    reinterpret_cast<const destination_char_type*>(buffer),
-	    (1024 - outbytesleft) / sizeof(destination_char_type)
-	    );
+    char *p = buffer;
+    size_t outbytesleft = 1024;
+    int ret = iconv(cd, (ICONV_CONST char **)&inbuf, &inbytesleft, &p, &outbytesleft);
+    if (ret == -1 && errno != E2BIG) {
+        return false;
+    }
+    dst.append(
+        reinterpret_cast<const destination_char_type*>(buffer),
+        (1024 - outbytesleft) / sizeof(destination_char_type)
+        );
     }
     return true;
+}
+
+int translate_measure(int measure)
+{
+    switch (measure) {
+    case exact:
+        return simstring::exact;
+    case dice:
+        return simstring::dice;
+    case cosine:
+        return simstring::cosine;
+    case jaccard:
+        return simstring::jaccard;
+    case overlap:
+        return simstring::overlap;
+    }
+    throw std::invalid_argument("Unknown similarity measure specified");
 }
 
 
@@ -65,8 +82,8 @@ writer::writer(const char *filename, int n, bool be, bool unicode)
             delete gen;
             throw std::invalid_argument(message);
         }
-	m_dbw = dbw;
-	m_gen = gen;
+    m_dbw = dbw;
+    m_gen = gen;
 
     } else {
         writer_type *dbw = new writer_type(*gen, filename);
@@ -76,8 +93,8 @@ writer::writer(const char *filename, int n, bool be, bool unicode)
             delete gen;
             throw std::invalid_argument(message);
         }
-	m_dbw = dbw;
-	m_gen = gen;
+    m_dbw = dbw;
+    m_gen = gen;
     }
 }
 
@@ -85,31 +102,31 @@ writer::~writer()
 {
     if (m_unicode) {
         uwriter_type* dbw = reinterpret_cast<uwriter_type*>(m_dbw);
-	ngram_generator_type* gen = reinterpret_cast<ngram_generator_type*>(m_gen);
-	
-	dbw->close();
-	if (dbw->fail()) {
-	    std::string message = dbw->error();
-	    delete dbw;
-	    delete gen;
-	    throw std::runtime_error(message);
-	}
-	delete dbw;
-	delete gen;
+    ngram_generator_type* gen = reinterpret_cast<ngram_generator_type*>(m_gen);
+    
+    dbw->close();
+    if (dbw->fail()) {
+        std::string message = dbw->error();
+        delete dbw;
+        delete gen;
+        throw std::runtime_error(message);
+    }
+    delete dbw;
+    delete gen;
 
     } else {
         writer_type* dbw = reinterpret_cast<writer_type*>(m_dbw);
-	ngram_generator_type* gen = reinterpret_cast<ngram_generator_type*>(m_gen);
-	
-	dbw->close();
-	if (dbw->fail()) {
-	    std::string message = dbw->error();
-	    delete dbw;
-	    delete gen;
-	    throw std::runtime_error(message);
-	}
-	delete dbw;
-	delete gen;
+    ngram_generator_type* gen = reinterpret_cast<ngram_generator_type*>(m_gen);
+    
+    dbw->close();
+    if (dbw->fail()) {
+        std::string message = dbw->error();
+        delete dbw;
+        delete gen;
+        throw std::runtime_error(message);
+    }
+    delete dbw;
+    delete gen;
     }
 }
 
@@ -118,22 +135,22 @@ void writer::insert(const char *string)
     if (m_unicode) {
         uwriter_type* dbw = reinterpret_cast<uwriter_type*>(m_dbw);
 
-	std::wstring str;
-	iconv_t cd = iconv_open("WCHAR_T", "UTF-8");
-	iconv_convert(cd, std::string(string), str);
-	iconv_close(cd);
+    std::wstring str;
+    iconv_t cd = iconv_open("WCHAR_T", "UTF-8");
+    iconv_convert(cd, std::string(string), str);
+    iconv_close(cd);
 
-	dbw->insert(str);
-	if (dbw->fail()) {
+    dbw->insert(str);
+    if (dbw->fail()) {
             throw std::runtime_error(dbw->error());
-	}
+    }
 
     } else {
         writer_type* dbw = reinterpret_cast<writer_type*>(m_dbw);
-	dbw->insert(string);
-	if (dbw->fail()) {
+    dbw->insert(string);
+    if (dbw->fail()) {
             throw std::runtime_error(dbw->error());
-	}
+    }
     }
 }
 
@@ -246,8 +263,8 @@ void retrieve_iconv(
     iconv_t bwd = iconv_open("UTF-8", encoding);
     for (typename strings_type::const_iterator it = xstrs.begin();it != xstrs.end();++it) {
         std::string dst;
-	iconv_convert(bwd, *it, dst);
-	*ins = dst;
+    iconv_convert(bwd, *it, dst);
+    *ins = dst;
     }
     iconv_close(bwd);
 }
@@ -270,6 +287,30 @@ std::vector<std::string> reader::retrieve(const char *query)
     }
 
     return ret;
+}
+
+bool reader::check(const char *query)
+{
+    reader_type& dbr = *reinterpret_cast<reader_type*>(m_dbr);
+    
+    if (dbr.char_size() == 1) {
+        std::string qstr = query;
+        return dbr.check(qstr, translate_measure(this->measure), this->threshold);
+    } else if (dbr.char_size() == 2) {
+        std::basic_string<uint16_t> qstr;
+        iconv_t fwd = iconv_open(UTF16, "UTF-8");
+        iconv_convert(fwd, query, qstr);
+        iconv_close(fwd);
+        return dbr.check(qstr, translate_measure(this->measure), this->threshold);
+    } else if (dbr.char_size() == 4) {
+        std::basic_string<uint32_t> qstr;
+        iconv_t fwd = iconv_open(UTF32, "UTF-8");
+        iconv_convert(fwd, query, qstr);
+        iconv_close(fwd);
+        return dbr.check(qstr, translate_measure(this->measure), this->threshold);
+    }
+    
+    return false;
 }
 
 void reader::close()

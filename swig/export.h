@@ -126,6 +126,25 @@ public:
      *  @see    threshold   The similarity value used by this function.
      */
     std::vector<std::string> retrieve(const char *query);
+    
+    /**
+     * Checks the existence of a string that is similar to the query string.
+     *  This function examines the existence of a string whose similarity with
+     *  the query string is no smaller than a threshold. Before calling this
+     *  function, set the similarity measure and threshold to \ref measure and
+     *  \ref threshold attributes of the reader object.
+     *  
+     *  @param  query       The query string. This argument must be a
+     *                      null-terminated byte stream. If the database was
+     *                      created with Unicode mode, this function assumes
+     *                      that the byte stream is encoded in UTF-8, and
+     *                      converts it into a wchar_t string.
+     *  @return             \c true if a similar string exists,
+     *                      \c false otherwise.
+     *  @see    measure     The similarity function used by this function.
+     *  @see    threshold   The similarity value used by this function.
+     */
+     bool check(const char *query);
 
     /**
      * Closes a database.
@@ -207,6 +226,18 @@ A basic sample.
 A Unicode sample.
 
 @include ruby/sample_unicode.rb
+
+@subsection perl Perl
+
+A basic sample.
+
+@include perl/sample.pl
+
+@subsection java Java
+
+A basic sample.
+
+@include java/Sample.java
 
 */
 
