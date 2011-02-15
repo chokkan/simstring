@@ -299,13 +299,13 @@ bool reader::check(const char *query)
     } else if (dbr.char_size() == 2) {
         std::basic_string<uint16_t> qstr;
         iconv_t fwd = iconv_open(UTF16, "UTF-8");
-        iconv_convert(fwd, query, qstr);
+        iconv_convert(fwd, std::string(query), qstr);
         iconv_close(fwd);
         return dbr.check(qstr, translate_measure(this->measure), this->threshold);
     } else if (dbr.char_size() == 4) {
         std::basic_string<uint32_t> qstr;
         iconv_t fwd = iconv_open(UTF32, "UTF-8");
-        iconv_convert(fwd, query, qstr);
+        iconv_convert(fwd, std::string(query), qstr);
         iconv_close(fwd);
         return dbr.check(qstr, translate_measure(this->measure), this->threshold);
     }

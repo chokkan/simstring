@@ -989,7 +989,7 @@ public:
     }
 
     template <class string_type>
-    void check(
+    bool check(
         const string_type& query,
         int measure,
         double alpha
@@ -997,21 +997,17 @@ public:
     {
         switch (measure) {
         case exact:
-            this->check<simstring::measure::exact>(query, alpha);
-            break;
+            return this->check<simstring::measure::exact>(query, alpha);
         case dice:
-            this->check<simstring::measure::dice>(query, alpha);
-            break;
+            return this->check<simstring::measure::dice>(query, alpha);
         case cosine:
-            this->check<simstring::measure::cosine>(query, alpha);
-            break;
+            return this->check<simstring::measure::cosine>(query, alpha);
         case jaccard:
-            this->check<simstring::measure::jaccard>(query, alpha);
-            break;
+            return this->check<simstring::measure::jaccard>(query, alpha);
         case overlap:
-            this->check<simstring::measure::overlap>(query, alpha);
-            break;
+            return this->check<simstring::measure::overlap>(query, alpha);
         }
+        return false;
     }
 
     template <class measure_type, class string_type>
