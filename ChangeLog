@@ -1,3 +1,9 @@
+2011-02-xx  Naoaki Okazaki  <okazaki at chokkan org>
+
+	* SimString 1.1:
+	- Implemented check() member function.
+
+
 2010-03-07  Naoaki Okazaki  <okazaki at chokkan org>
 
 	* SimString 1.0:

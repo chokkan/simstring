@@ -52,9 +52,9 @@
 #include "memory_mapped_file.h"
 
 #define	SIMSTRING_NAME           "SimString"
-#define	SIMSTRING_COPYRIGHT      "Copyright (c) 2009,2010 Naoaki Okazaki"
+#define	SIMSTRING_COPYRIGHT      "Copyright (c) 2009-2011 Naoaki Okazaki"
 #define	SIMSTRING_MAJOR_VERSION  1
-#define SIMSTRING_MINOR_VERSION  0
+#define SIMSTRING_MINOR_VERSION  1
 #define SIMSTRING_STREAM_VERSION 2
 
 /** 
