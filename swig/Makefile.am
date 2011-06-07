@@ -1,9 +1,6 @@
 # $Id:$
 
 EXTRA_DIST = \
-	export.i \
-	export.h \
-	export.cpp \
 	python/prepare.sh \
 	python/setup.py.in \
 	python/export_wrap.cpp \
@@ -30,5 +27,6 @@ EXTRA_DIST = \
 	java/simstring/*.java \
 	java/run_sample.sh \
 	java/Sample.java \
-
-
+	export.i \
+	export.h \
+	export.cpp
