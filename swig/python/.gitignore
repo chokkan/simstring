@@ -1,0 +1,6 @@
+_simstring.so
+build
+export.*
+export_wrap.cpp
+setup.py
+simstring.py
