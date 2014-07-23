@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <unistd.h>
 
 class memory_mapped_file_posix :
     public memory_mapped_file_base
