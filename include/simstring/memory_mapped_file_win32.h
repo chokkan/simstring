@@ -33,7 +33,9 @@
 #ifndef __MEMORY_MAPPED_FILE_WIN32_H__
 #define __MEMORY_MAPPED_FILE_WIN32_H__
 
+#ifndef NOMINMAX
 #define NOMINMAX    // To fix min/max conflicts with STL.
+#endif
 
 #include <memory.h>
 #include <windows.h>
