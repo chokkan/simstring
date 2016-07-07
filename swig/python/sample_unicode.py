@@ -9,6 +9,7 @@ encoding declaration in line 2). We can use 8-bit strings as they are
 with SimString.
 """
 
+import sys
 import simstring
 
 # Open a SimString database for writing with Unicode mode.
@@ -26,9 +27,10 @@ db = simstring.reader('sample_unicode.db')
 db.measure = simstring.cosine
 db.threshold = 0.6
 
-# Use an 8-bit string encoded in UTF-8.
-print(' '.join(db.retrieve('スパゲティー')))
-
-# Convert a Unicode object into an UTF-8 query string.
-print(' '.join(db.retrieve(u'スパゲティー'.encode('utf-8'))))
+if sys.version_info.major > 2:
+    # Use an 8-bit string encoded in UTF-8.
+    print(' '.join(db.retrieve('スパゲティー')))
+else:
+    # Convert a Unicode object into an UTF-8 query string.
+    print(' '.join(db.retrieve(u'スパゲティー'.encode('utf-8'))))
 
