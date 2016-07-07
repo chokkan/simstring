@@ -27,8 +27,8 @@ db.measure = simstring.cosine
 db.threshold = 0.6
 
 # Use an 8-bit string encoded in UTF-8.
-print ' '.join(db.retrieve('スパゲティー'))
+print(' '.join(db.retrieve('スパゲティー')))
 
 # Convert a Unicode object into an UTF-8 query string.
-print ' '.join(db.retrieve(u'スパゲティー'.encode('utf-8')))
+print(' '.join(db.retrieve(u'スパゲティー'.encode('utf-8'))))
 
