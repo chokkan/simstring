@@ -35,6 +35,7 @@
 
 #include <iostream>
 #include <string>
+#include <unistd.h>
 
 class memory_mapped_file_base
 {
