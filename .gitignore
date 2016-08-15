@@ -1,0 +1,4 @@
+release/
+swig/python/build/
+swig/python/export.*
+swig/python/*.so
