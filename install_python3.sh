@@ -10,9 +10,14 @@ done
 SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 cd $SCRIPT_DIR/swig/python
+
+# remove symbolic links and build folder (they will be recreated)
+rm -rf build export.*
+
 sh prepare.sh
 python3 setup.py.in build_ext --inplace
 
+rm -rf $SCRIPT_DIR/release
 mkdir $SCRIPT_DIR/release
 cp simstring.py $SCRIPT_DIR/release/
 cp _simstring*.so $SCRIPT_DIR/release/
