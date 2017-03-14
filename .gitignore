@@ -1,0 +1,14 @@
+# NOTE: This collection is preliminary, autotools is very noisy and creates
+# zillions of files that should be ignored
+*.in
+*.m4
+.deps
+INSTALL
+Makefile
+autom4te.cache
+config.*
+configure
+depcomp
+install-sh
+missing
+stamp-h1

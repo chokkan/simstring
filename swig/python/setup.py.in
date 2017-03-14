@@ -27,7 +27,8 @@ simstring_module = Extension(
         'export_wrap.cpp',
         ],
     include_dirs=[get_includedir(),],
-    extra_link_args=['-shared'],
+    libraries=['iconv',],
+    extra_link_args=['-shared',],
     language='c++',
     )
 

@@ -191,15 +191,19 @@ int build(option& opt, istream_type& is)
     std::ostream& es = std::cerr;
 
     // Show the copyright information.
-    version(os);
+    if (!opt.quiet) {
+        version(os);
+    }
 
     // Show parameters for database construction.
-    os << "Constructing the database" << std::endl;
-    os << "Database name: " << opt.name << std::endl;
-    os << "N-gram length: " << opt.ngram_size << std::endl;
-    os << "Begin/end marks: " << std::boolalpha << opt.be << std::endl;
-    os << "Char type: " << typeid(char_type).name() << " (" << sizeof(char_type) << ")" << std::endl;
-    os.flush();
+    if (!opt.quiet) {
+        os << "Constructing the database" << std::endl;
+        os << "Database name: " << opt.name << std::endl;
+        os << "N-gram length: " << opt.ngram_size << std::endl;
+        os << "Begin/end marks: " << std::boolalpha << opt.be << std::endl;
+        os << "Char type: " << typeid(char_type).name() << " (" << sizeof(char_type) << ")" << std::endl;
+        os.flush();
+    }
 
     // Open the database for construction.
     clock_t clk = std::clock();
@@ -232,24 +236,32 @@ int build(option& opt, istream_type& is)
             os.flush();
         }
     }
-    os << "Number of strings: " << n << std::endl;
-    os << std::endl;
-    os.flush();
+    if (!opt.quiet) {
+        os << "Number of strings: " << n << std::endl;
+        os << std::endl;
+        os.flush();
+    }
 
     // Finalize the database.
-    os << "Flushing the database" << std::endl;
+    if (!opt.quiet) {
+        os << "Flushing the database" << std::endl;
+    }
     if (!db.close()) {
         es << "ERROR: " << db.error() << std::endl;
         return 1;
     }
-    os << std::endl;
+    if (!opt.quiet) {
+        os << std::endl;
+    }
 
-    // Report the elaped time for construction.
-    os << "Total number of strings: " << n << std::endl;
-    os << "Seconds required: "
-        << (std::clock() - clk) / (double)CLOCKS_PER_SEC << std::endl;
-    os << std::endl;
-    os.flush();
+    // Report the elapsed time for construction.
+    if (!opt.quiet) {
+        os << "Total number of strings: " << n << std::endl;
+        os << "Seconds required: "
+            << (std::clock() - clk) / (double)CLOCKS_PER_SEC << std::endl;
+        os << std::endl;
+        os.flush();
+    }
 
     return 0;
 }
