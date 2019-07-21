@@ -279,10 +279,18 @@ std::vector<std::string> reader::retrieve(const char *query)
         retrieve_thru(dbr, query, this->measure, this->threshold, std::back_inserter(ret));
         break;
     case 2:
+#if defined(__apple_build_version__)
+        throw std::runtime_error("UTF16 not supported in macOS, due to compatibility issues with libc++.");
+#else
         retrieve_iconv<uint16_t>(dbr, query, UTF16, this->measure, this->threshold, std::back_inserter(ret));
+#endif
         break;
     case 4:
+#if defined(__apple_build_version__)
+        throw std::runtime_error("UTF32 not supported in macOS, due to compatibility issues with libc++.");
+#else
         retrieve_iconv<uint32_t>(dbr, query, UTF32, this->measure, this->threshold, std::back_inserter(ret));
+#endif
         break;
     }
 
@@ -292,10 +300,14 @@ std::vector<std::string> reader::retrieve(const char *query)
 bool reader::check(const char *query)
 {
     reader_type& dbr = *reinterpret_cast<reader_type*>(m_dbr);
-    
+
     if (dbr.char_size() == 1) {
         std::string qstr = query;
         return dbr.check(qstr, translate_measure(this->measure), this->threshold);
+#if defined(__apple_build_version__)
+    } else {
+        throw std::runtime_error("UTF16/32 not supported in macOS, due to compatibility issues with libc++.");
+#else
     } else if (dbr.char_size() == 2) {
         std::basic_string<uint16_t> qstr;
         iconv_t fwd = iconv_open(UTF16, "UTF-8");
@@ -308,8 +320,9 @@ bool reader::check(const char *query)
         iconv_convert(fwd, std::string(query), qstr);
         iconv_close(fwd);
         return dbr.check(qstr, translate_measure(this->measure), this->threshold);
+#endif
     }
-    
+
     return false;
 }
 
