@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/bin/sh -xe
 # $Id:$
 
-ln -s ../export.cpp
-ln -s ../export.h
-ln -s ../export.i
+ln -sf ../export.cpp
+ln -sf ../export.h
+ln -sf ../export.i
 
 if [ "$1" = "--swig" ];
 then
