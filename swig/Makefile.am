@@ -2,7 +2,7 @@
 
 EXTRA_DIST = \
 	python/prepare.sh \
-	python/setup.py.in \
+	python/setup.py \
 	python/export_wrap.cpp \
 	python/simstring.py \
 	python/sample.py \
