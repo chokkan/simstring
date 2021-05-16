@@ -66,7 +66,7 @@ struct dice
 {
     inline static int min_size(int qsize, double alpha)
     {
-        return (int)std::ceil(alpha * qsize / (2. - qsize));
+        return (int)std::ceil(alpha * qsize / (2. - alpha));
     }
 
     inline static int max_size(int qsize, double alpha)
